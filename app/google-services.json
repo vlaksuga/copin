@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1082832212277",
+    "project_id": "copinweb",
+    "storage_bucket": "copinweb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082832212277:android:69e9032adeed2f528d7c7c",
+        "android_client_info": {
+          "package_name": "com.copincomics.copinwebapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1082832212277-kg5bltcu474gj83da4ejqsr1p4fsc9te.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.copincomics.copinwebapp",
+            "certificate_hash": "25235d40d8e6f4f28b2391fa145503b314fe8610"
+          }
+        },
+        {
+          "client_id": "1082832212277-ljiog7lsdqdovdmpt8biokv1pnr8s2kq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2pntN5I44ZlIT0jX1bcwuPtoSfsAjnqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1082832212277-ljiog7lsdqdovdmpt8biokv1pnr8s2kq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

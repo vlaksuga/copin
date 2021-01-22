@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Copin</string>
+    <string name="msg_loading">Please wait! This may take a moment.</string>
+    <string name="splash_image">splash_image</string>
+</resources>
