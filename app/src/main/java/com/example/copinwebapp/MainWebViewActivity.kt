@@ -49,6 +49,7 @@ class MainWebViewActivity : BaseActivity() {
     private lateinit var fabGoogle: FloatingActionButton
     private lateinit var fabEmail: FloatingActionButton
     private lateinit var fabLogout: FloatingActionButton
+    private lateinit var fabPay: FloatingActionButton
 
     lateinit var webView: WebView
     var currentUrl: String = BASE_URL
@@ -66,6 +67,13 @@ class MainWebViewActivity : BaseActivity() {
 
         auth = Firebase.auth
 
+        // From Notification
+        val entryIntent = intent
+        entryIntent.getStringExtra("link")?.let { link ->
+            currentUrl = link
+            Log.d(TAG, "onCreate: currentUrl = $link")
+        }
+
         // dummy buttons
         fabApple = findViewById(R.id.apple_login_btn)
         fabTwitter = findViewById(R.id.twitter_login_btn)
@@ -73,6 +81,7 @@ class MainWebViewActivity : BaseActivity() {
         fabGoogle = findViewById(R.id.google_login_btn)
         fabEmail = findViewById(R.id.email_login_btn)
         fabLogout = findViewById(R.id.logout_btn)
+        fabPay = findViewById(R.id.purchase_btn)
 
         // dummy listener
         fabApple.setOnClickListener { signInWithProvider("apple.com") }
@@ -81,6 +90,7 @@ class MainWebViewActivity : BaseActivity() {
         fabGoogle.setOnClickListener { googleSignIn() }
         fabEmail.setOnClickListener { signInWithEmail("tekiteki@naver.com", "djfuavnt2@") }
         fabLogout.setOnClickListener { logout() }
+        fabPay.setOnClickListener { payActivity() }
 
         val intent = intent
         intent.extras?.let {
@@ -188,6 +198,11 @@ class MainWebViewActivity : BaseActivity() {
 
         }
         setCookieAndLoadUrl()
+    }
+
+    private fun payActivity() {
+        val payIntent = Intent(this, PayActivity::class.java)
+        startActivity(payIntent)
     }
 
 

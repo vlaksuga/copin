@@ -2,9 +2,11 @@ package com.example.copinwebapp
 
 import android.content.SharedPreferences
 import com.example.copinwebapp.dao.AccountDAO
+import com.example.copinwebapp.dao.PayDAO
 import okhttp3.*
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.create
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -51,4 +53,10 @@ class ServiceRepo (private val sharedPreferences: SharedPreferences) {
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient)
         .build().create(AccountDAO::class.java)
+
+    val payDAO: PayDAO = Retrofit.Builder()
+        .baseUrl(BASE_URL)
+        .addConverterFactory(GsonConverterFactory.create())
+        .client(okHttpclient)
+        .build().create(PayDAO::class.java)
 }

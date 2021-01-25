@@ -2,4 +2,6 @@
     <string name="app_name">Copin</string>
     <string name="msg_loading">Please wait! This may take a moment.</string>
     <string name="splash_image">splash_image</string>
+    <string name="default_notification_channel_id">CopinComics</string>
+    <string name="titie_pay_activity">Purchase Coins</string>
 </resources>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="100dp"
+    android:background="@drawable/rounded_corner_round5">
+
+    <ImageView
+        android:id="@+id/product_ic"
+        android:layout_width="18dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="13dp"
+        android:contentDescription="TODO"
+        android:src="@mipmap/icon_coin"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <ImageView
+        android:id="@+id/tag_best"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:contentDescription="TODO"
+        android:src="@mipmap/tag_best"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="@+id/product_ic"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/product_amount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:text="10 Coins"
+        android:textSize="15sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/product_ic"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/product_price"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:text="$ 1.99"
+        android:textColor="@color/orange"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/product_bonus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="(+ Bonus 10 Coins)"
+        android:textColor="#66BB6A"
+        android:textSize="13sp"
+        app:layout_constraintStart_toStartOf="@+id/product_amount"
+        app:layout_constraintTop_toBottomOf="@+id/product_amount" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

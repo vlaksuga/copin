@@ -24,7 +24,7 @@ class EntryActivity : BaseActivity() {
         const val TAG = "TAG : Entry"
     }
 
-    var pkey: String? = null
+    var link: String? = null
     var networkConnect = false
     var checkVersion = false
     var checkLogin = false
@@ -39,8 +39,10 @@ class EntryActivity : BaseActivity() {
 
         /* INTENT EXTRA */
         val intent = intent
-        pkey = intent.extras?.getString("id")
-        Log.d(TAG, "intent extra pkey = $pkey")
+        intent.extras?.let {
+            link = it.getString("link")
+            Log.d(TAG, "intent extra link = $link")
+        }
 
         /* CHECK NETWORK CONNECTION */
         if (networkConnection(this)) {
@@ -230,7 +232,8 @@ class EntryActivity : BaseActivity() {
         if(networkConnect and checkVersion and checkLogin and updateDeviceId) {
             // TODO : SET IDENTITY FOR BRANCH HERE
             val intent = Intent(this, MainWebViewActivity::class.java)
-            intent.putExtra("id", pkey)
+            intent.putExtra("link", link)
+            Log.d(TAG, "executeNext: link = $link")
             startActivity(intent)
             finish()
         }
