@@ -3,5 +3,6 @@
     <string name="msg_loading">Please wait! This may take a moment.</string>
     <string name="splash_image">splash_image</string>
     <string name="default_notification_channel_id">CopinComics</string>
-    <string name="titie_pay_activity">Purchase Coins</string>
+    <string name="event_notification_channel_id">Event</string>
+    <string name="title_pay_activity">Purchase Coins</string>
 </resources>
