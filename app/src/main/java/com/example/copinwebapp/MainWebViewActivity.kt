@@ -33,7 +33,8 @@ class MainWebViewActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : Main"
-        const val BASE_URL = "https://copincomics.com/"
+        const val BASE_URL = "https://stage.copincomics.com/?v=2021012700111"
+        const val NEED_LOGIN = "https://stage.copincomics.com/?c=login&v=2021012700111"
         const val GOOGLE_SIGN_IN = 9001
     }
 
@@ -50,10 +51,10 @@ class MainWebViewActivity : BaseActivity() {
     private lateinit var fabEmail: FloatingActionButton
     private lateinit var fabLogout: FloatingActionButton
     private lateinit var fabPay: FloatingActionButton
+    private lateinit var fabEmailSignUp: FloatingActionButton
 
     lateinit var webView: WebView
     var currentUrl: String = BASE_URL
-    private var id = ""
     val userAgent: String = WebSettings.getDefaultUserAgent(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,10 +63,9 @@ class MainWebViewActivity : BaseActivity() {
         webView = findViewById(R.id.webView)
 
         init()
-
         loadingDialog.show()
-
         auth = Firebase.auth
+        callbackManager = CallbackManager.Factory.create()
 
         // From Notification
         val entryIntent = intent
@@ -82,25 +82,24 @@ class MainWebViewActivity : BaseActivity() {
         fabEmail = findViewById(R.id.email_login_btn)
         fabLogout = findViewById(R.id.logout_btn)
         fabPay = findViewById(R.id.purchase_btn)
+        fabEmailSignUp = findViewById(R.id.email_sign_up_btn)
 
         // dummy listener
         fabApple.setOnClickListener { signInWithProvider("apple.com") }
         fabTwitter.setOnClickListener { signInWithProvider("twitter.com") }
-        fabFacebook.setOnClickListener { facebookLogin() }
+        fabFacebook.setOnClickListener { facebookLoginInApp() }
         fabGoogle.setOnClickListener { googleSignIn() }
-        fabEmail.setOnClickListener { signInWithEmail("tekiteki@naver.com", "djfuavnt2@") }
+        fabEmail.setOnClickListener { signInWithEmail("tekiteki@naver.com", "password1234@") }
         fabLogout.setOnClickListener { logout() }
-        fabPay.setOnClickListener { payActivity() }
+        fabPay.setOnClickListener { startPayActivity() }
+        fabEmailSignUp.setOnClickListener { createUserWithEmailAndPassword("tekiteki@naver.com", "password1234@") }
 
-        val intent = intent
-        intent.extras?.let {
-            id = it.getString("id").toString()
-        }
+
+
         webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.setSupportZoom(false)
         webView.settings.useWideViewPort = true
-        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         webView.settings.setSupportMultipleWindows(false)
         webView.settings.javaScriptCanOpenWindowsAutomatically = false
         webView.settings.allowFileAccess = true
@@ -111,11 +110,6 @@ class MainWebViewActivity : BaseActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 flag = true
-                if (url != null) {
-                    if ("google" in url) {
-                        webView.settings.userAgentString = System.getProperty("http.agent")
-                    }
-                }
 
                 loadingDialog.show()
                 Log.d(TAG, "onPageStarted: invoked")
@@ -125,16 +119,7 @@ class MainWebViewActivity : BaseActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                val c = getAppPref("deviceId")
-                val t = getAppPref("t")
-                val d = "android"
-                val v = getAppPref("appVersion")
                 loadingDialog.dismiss()
-                if (url != null) {
-                    if ("google" !in url) {
-                        webView.settings.userAgentString = userAgent
-                    }
-                }
             }
 
             override fun shouldOverrideUrlLoading(
@@ -197,12 +182,70 @@ class MainWebViewActivity : BaseActivity() {
             }
 
         }
-        setCookieAndLoadUrl()
+        webView.addJavascriptInterface(
+            object {
+                @JavascriptInterface
+                fun showToast(msg: String) {
+                    Toast.makeText(this@MainWebViewActivity, msg, Toast.LENGTH_SHORT).show()
+                }
+
+                @JavascriptInterface
+                fun googleLogin() {
+                    Log.d(TAG, "googleLogin: invoked")
+                    googleSignIn()
+                }
+
+                @JavascriptInterface
+                fun facebookLogin() {
+                    Log.d(TAG, "facebookLogin: invoked")
+                    facebookLoginInApp()
+                }
+
+                @JavascriptInterface
+                fun twitterLogin() {
+                    Log.d(TAG, "twitterLogin: invoked")
+                    signInWithProvider("twitter.com")
+                }
+
+                @JavascriptInterface
+                fun appleLogin() {
+                    Log.d(TAG, "appleLogin: invoked")
+                    signInWithProvider("apple.com")
+                }
+
+                @JavascriptInterface
+                fun androidLogout() {
+                    Log.d(TAG, "androidLogout: invoked")
+                    logout()
+                }
+
+                @JavascriptInterface
+                fun setLTokens(t: String, lt: String) {
+                    Log.d(TAG, "setLTokens: invoked")
+                    putAppPref("lt", lt)
+                    putAppPref("t", t)
+                    setCookie()
+                }
+
+                @JavascriptInterface
+                fun goCoinShop() {
+                    Log.d(TAG, "goCoinShop: invoked")
+                    startPayActivity()
+                }
+
+            }, "AndroidCopin"
+        )
+        setCookie()
+        webView.loadUrl(currentUrl)
     }
 
-    private fun payActivity() {
-        val payIntent = Intent(this, PayActivity::class.java)
-        startActivity(payIntent)
+    private fun startPayActivity() {
+        if(getAppPref("t") != "") {
+            val payIntent = Intent(this, PayActivity::class.java)
+            startActivity(payIntent)
+        } else {
+            webView.loadUrl(NEED_LOGIN)
+        }
     }
 
 
@@ -214,7 +257,7 @@ class MainWebViewActivity : BaseActivity() {
                     Log.d(TAG, "signInWithEmail: user = ${auth.currentUser} ")
                     auth.currentUser?.let { loginAuthServerWithFirebaseUser(it) }
                 } else {
-                    Log.d(TAG, "signInWithEmail: Fail")
+                    Log.e(TAG, "signInWithEmail: fail", task.exception)
                 }
             }
     }
@@ -232,7 +275,22 @@ class MainWebViewActivity : BaseActivity() {
                 }
     }
 
-    private fun setCookieAndLoadUrl() {
+    private fun createUserWithEmailAndPassword(email: String, password: String) {
+        auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if(task.isSuccessful) {
+                        Log.d(TAG, "createUserWithEmailAndPassword: success => ${auth.currentUser}")
+                        val user: FirebaseUser? = auth.currentUser
+                        if (user != null) {
+                            loginAuthServerWithFirebaseUser(user)
+                        } else {
+                            Log.d(TAG, "createUserWithEmailAndPassword: Fail User is null")
+                        }
+                    }
+                }
+    }
+
+    private fun setCookie() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.apply {
             setAcceptCookie(true)
@@ -241,7 +299,6 @@ class MainWebViewActivity : BaseActivity() {
             setCookie("live.copincomics.com", "copinandroid=${getAppPref("t")}")
         }
         Log.d(TAG, "setCookieAndLoadUrl: cookie = copinandroid=${getAppPref("t")}")
-        webView.loadUrl(currentUrl)
     }
 
     override fun onBackPressed() {
@@ -305,6 +362,7 @@ class MainWebViewActivity : BaseActivity() {
         auth.signInWithCredential(credential)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
+                        Log.d(TAG, "signInWithCredential: success")
                         val user = auth.currentUser
                         user?.let { loginAuthServerWithFirebaseUser(it) }
                     }
@@ -319,21 +377,14 @@ class MainWebViewActivity : BaseActivity() {
                             val idToken = task.result.token
                             Log.d(TAG, "loginAuthServerWithFirebaseUser: Firebase Id Token : $idToken")
                             if (idToken != null) {
-                                repo.accountDAO.processLoginFirebase(idToken).enqueue(object : Callback<RetLogin> {
-                                    override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
-                                        response.body()?.let { res ->
-                                            val head = res.head
-                                            if (head.status != "error") {
-                                                val ret = res.body
-                                                putAppPref("lt", ret.t2)
-                                                putAppPref("t", ret.token)
-                                                putAppPref("accountPKey", ret.userinfo.accountpkey)
-                                                Log.d(TAG, "onResponse: Auth Server Respond Success")
-                                                setCookieAndLoadUrl()
-                                            } else {
-                                                Log.d(TAG, "onResponse: Head Status Error")
-                                            }
-                                        }
+                                repo.accountDAO.processLoginFirebase(idToken).enqueue(object :
+                                    Callback<RetLogin> {
+                                    override fun onResponse(
+                                        call: Call<RetLogin>,
+                                        response: Response<RetLogin>
+                                    ) {
+                                        Log.d(TAG, "onResponse: success")
+                                        webView.loadUrl("javascript:loginWithFirebase('$idToken')")
                                     }
 
                                     override fun onFailure(call: Call<RetLogin>, t: Throwable) {
@@ -354,18 +405,20 @@ class MainWebViewActivity : BaseActivity() {
     private fun restartToBaseUrl() { webView.loadUrl(BASE_URL) }
 
     private fun googleSignIn() {
+        Log.d(TAG, "googleSignIn: invoked")
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
-        webView.settings.userAgentString = System.getProperty("http.agent")
+        /*webView.settings.userAgentString = System.getProperty("http.agent")*/
         val signInIntent = googleSignInClient.signInIntent
+        Log.d(TAG, "googleSignIn: invoked2")
         startActivityForResult(signInIntent, GOOGLE_SIGN_IN)
+        Log.d(TAG, "googleSignIn: invoked3")
     }
 
-    private fun facebookLogin() {
-        callbackManager = CallbackManager.Factory.create()
+    private fun facebookLoginInApp() {
         val loginManager = LoginManager.getInstance()
         loginManager.logInWithReadPermissions(this, arrayListOf("email", "public_profile"))
         loginManager.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
@@ -404,6 +457,7 @@ class MainWebViewActivity : BaseActivity() {
             finish()
         }
     }
+
 
 
 }

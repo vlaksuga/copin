@@ -1,10 +1,12 @@
 package com.example.copinwebapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.view.View
+import android.widget.*
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.billingclient.api.*
 import com.example.copinwebapp.data.Confirm
@@ -24,6 +26,14 @@ class PayActivity : BaseActivity () {
     private lateinit var payCoin: TextView
     lateinit var accountPKey: String
     lateinit var rv: RecyclerView
+    lateinit var productLayout: LinearLayout
+    lateinit var processBlocker: ConstraintLayout
+    lateinit var successfulBlocker: ConstraintLayout
+    lateinit var tryAgainButton: ImageView
+    lateinit var closeProcess: ImageView
+    lateinit var refreshPay: TextView
+    lateinit var confirmButton: Button
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,16 +44,40 @@ class PayActivity : BaseActivity () {
         findViewById<TextView>(R.id.title).text = getString(R.string.title_pay_activity)
         findViewById<ImageView>(R.id.btn_finish).setOnClickListener { finish() }
         rv = findViewById(R.id.rv)
+        productLayout = findViewById(R.id.product_list_layout)
+        processBlocker = findViewById(R.id.processing_blocker_layout)
+        tryAgainButton = findViewById(R.id.imageView_try_again)
+        closeProcess = findViewById(R.id.imageView_close_blocker)
+        successfulBlocker = findViewById(R.id.successful_blocker_layout)
+        confirmButton = findViewById(R.id.button_confirm)
+        refreshPay = findViewById(R.id.pay_refresh)
+
+
+        closeProcess.setOnClickListener {
+            productLayout.visibility = View.VISIBLE
+            processBlocker.visibility = View.GONE
+            successfulBlocker.visibility = View.GONE
+        }
+
+        confirmButton.setOnClickListener {
+            productLayout.visibility = View.VISIBLE
+            processBlocker.visibility = View.GONE
+            successfulBlocker.visibility = View.GONE
+        }
+
+        refreshPay.setOnClickListener { updateUI() }
+        tryAgainButton.setOnClickListener { billingAgent.tryAgain() }
+
+        rv.layoutManager = LinearLayoutManager(this)
         payCoin = findViewById(R.id.pay_coin)
 
         billingAgent.init()
-
         updateUI()
     }
 
     private fun updateUI() {
         try {
-            billingAgent.getInventory()
+            billingAgent.startBillingConnection()
             billingAgent.checkProductUnconsumed()
         } catch (e: Exception) {
             Log.w(TAG, "updateUI: error", e)
@@ -74,5 +108,18 @@ class PayActivity : BaseActivity () {
         }
     }
 
+    override fun onBackPressed() {
+        val entryIntent = Intent(this, EntryActivity::class.java)
+        entryIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        startActivity(entryIntent)
+    }
+
+
+    override fun onStop() {
+        super.onStop()
+        productLayout.visibility = View.VISIBLE
+        processBlocker.visibility = View.GONE
+        successfulBlocker.visibility = View.GONE
+    }
 
 }

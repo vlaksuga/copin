@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="100dp"
+    android:layout_marginBottom="13dp"
     android:background="@drawable/rounded_corner_round5">
 
     <ImageView
@@ -21,10 +22,11 @@
     <ImageView
         android:id="@+id/tag_best"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
+        android:layout_height="24dp"
         android:contentDescription="TODO"
-        android:src="@mipmap/tag_best"
         android:visibility="invisible"
+        android:src="@mipmap/tag_best"
+        app:layout_constraintEnd_toEndOf="@+id/product_price"
         app:layout_constraintStart_toStartOf="@+id/product_ic"
         app:layout_constraintTop_toTopOf="parent" />
 

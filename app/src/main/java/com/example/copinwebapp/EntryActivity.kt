@@ -1,5 +1,7 @@
 package com.example.copinwebapp
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -57,6 +59,22 @@ class EntryActivity : BaseActivity() {
 
         /* UPDATE DEVICE ID */
         updateDeviceId = updateDeviceId()
+
+        /* CREATE NOTIFICATION CHANNELS */
+        createNotificationChannels()
+
+    }
+
+    private fun createNotificationChannels() {
+        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val commonChannelId = applicationContext.getString(R.string.default_notification_channel_id)
+        val eventChannelId = applicationContext.getString(R.string.event_notification_channel_id)
+        val seriesChannelId = getString(R.string.series_updates_notification_channel_id)
+        val commonChannel = NotificationChannel(commonChannelId, commonChannelId, NotificationManager.IMPORTANCE_HIGH)
+        val eventChannel = NotificationChannel(eventChannelId, eventChannelId, NotificationManager.IMPORTANCE_HIGH)
+        val seriesChannel = NotificationChannel(seriesChannelId, seriesChannelId, NotificationManager.IMPORTANCE_HIGH)
+        notificationManager.createNotificationChannels(listOf(commonChannel, eventChannel, seriesChannel))
+        Log.d(TAG, "createNotificationChannels: Created")
     }
 
     override fun onResume() {
@@ -106,6 +124,7 @@ class EntryActivity : BaseActivity() {
     }
 
     private fun checkVersion(): Boolean {
+
         try {
             repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
                 override fun onResponse(

@@ -3,6 +3,7 @@ package com.example.copinwebapp
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
@@ -35,5 +36,9 @@ open class BaseActivity : AppCompatActivity() {
 
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!
+    }
+
+    fun showToast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 }

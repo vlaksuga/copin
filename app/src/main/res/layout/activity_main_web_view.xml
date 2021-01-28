@@ -17,6 +17,7 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/email_login_btn"
+        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -26,9 +27,22 @@
         app:layout_constraintStart_toEndOf="@+id/google_login_btn"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/email_sign_up_btn"
+        android:visibility="invisible"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:backgroundTint="@color/orange"
+        android:src="@mipmap/icon_circle"
+        app:layout_constraintBottom_toTopOf="@+id/email_login_btn"
+        app:layout_constraintEnd_toEndOf="@+id/email_login_btn"
+        app:layout_constraintStart_toStartOf="@+id/email_login_btn" />
+
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/apple_login_btn"
+        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
@@ -40,6 +54,7 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/twitter_login_btn"
+        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -51,6 +66,7 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/facebook_login_btn"
+        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -62,6 +78,7 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/google_login_btn"
+        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -81,6 +98,7 @@
         android:backgroundTint="#FFFF33"
         android:contentDescription="TODO"
         android:src="@android:mipmap/sym_def_app_icon"
+        android:visibility="invisible"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -88,11 +106,11 @@
         android:id="@+id/purchase_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
         android:layout_marginTop="32dp"
         android:backgroundTint="#000000"
         android:contentDescription="TODO"
         android:src="@mipmap/icon_coin_u"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

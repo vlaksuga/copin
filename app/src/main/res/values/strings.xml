@@ -2,7 +2,12 @@
     <string name="app_name">Copin</string>
     <string name="msg_loading">Please wait! This may take a moment.</string>
     <string name="splash_image">splash_image</string>
-    <string name="default_notification_channel_id">CopinComics</string>
-    <string name="event_notification_channel_id">Event</string>
+    <string name="default_notification_channel_id">COPIN COMICS</string>
+    <string name="event_notification_channel_id">EVENT</string>
+    <string name="series_updates_notification_channel_id">SERIES UPDATES</string>
     <string name="title_pay_activity">Purchase Coins</string>
+    <string name="facebook_app_id">283590516063151</string>
+    <string name="fb_login_protocol_scheme">fb283590516063151</string>
+    <string name="facebook_application_id" translatable="false">283590516063151</string>
+    <string name="facebook_login_protocol_scheme" translatable="false">fb283590516063151</string>
 </resources>

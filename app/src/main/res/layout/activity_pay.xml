@@ -21,7 +21,7 @@
 
             <ImageView
                 android:id="@+id/btn_finish"
-                android:layout_width="wrap_content"
+                android:layout_width="64dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="16dp"
                 android:paddingEnd="30dp"
@@ -69,8 +69,8 @@
                 android:textSize="11sp" />
 
             <ImageView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:paddingHorizontal="10dp"
                 app:srcCompat="@mipmap/icon_coin_u" />
 
@@ -134,7 +134,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginHorizontal="16dp"
                         android:nestedScrollingEnabled="false"
-                        android:overScrollMode="never" />
+                        android:overScrollMode="never"
+                        tools:listitem="@layout/section_product"/>
 
                 </androidx.core.widget.NestedScrollView>
             </LinearLayout>
@@ -153,8 +154,8 @@
 
         <ImageView
             android:id="@+id/imageView_processing"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
             android:layout_marginTop="170dp"
             android:src="@mipmap/img_p_processing"
             app:layout_constraintEnd_toEndOf="parent"
@@ -173,10 +174,10 @@
 
         <ImageView
             android:id="@+id/imageView_close_blocker"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="37dp"
-            android:layout_marginEnd="16dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="32dp"
             android:src="@mipmap/btn_p_close_w"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -204,10 +205,10 @@
 
         <ImageView
             android:id="@+id/imageView_successful"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="217dp"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
             android:src="@mipmap/img_p_successful"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
