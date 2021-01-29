@@ -5,8 +5,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <WebView
+        android:id="@+id/webView_pay2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <LinearLayout
         android:id="@+id/product_list_layout"
+        android:visibility="visible"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"

@@ -30,7 +30,6 @@ class MyFirebaseMessageService : FirebaseMessagingService() {
             val intent = Intent(applicationContext, EntryActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             intent.putExtra("link", link)
-
             val pendingIntent = PendingIntent.getActivity(
                     applicationContext, 0, intent, PendingIntent.FLAG_ONE_SHOT
             )
@@ -55,7 +54,6 @@ class MyFirebaseMessageService : FirebaseMessagingService() {
                     .setContentIntent(pendingIntent)
 
             val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
             notificationManager.notify(0, notificationBuilder.build())
 
         } else {

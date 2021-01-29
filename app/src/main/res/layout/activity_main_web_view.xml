@@ -42,43 +42,42 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/apple_login_btn"
-        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:backgroundTint="@color/black"
         android:src="@android:mipmap/sym_def_app_icon"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/twitter_login_btn"
-        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:backgroundTint="#0077FF"
         android:src="@android:mipmap/sym_def_app_icon"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/apple_login_btn"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/facebook_login_btn"
-        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:backgroundTint="#0000FF"
         android:src="@android:mipmap/sym_def_app_icon"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/twitter_login_btn"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/google_login_btn"
-        android:visibility="invisible"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -86,6 +85,7 @@
         android:backgroundTint="@color/white"
         android:contentDescription="TODO"
         android:src="@android:mipmap/sym_def_app_icon"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/facebook_login_btn" />
 
@@ -110,6 +110,7 @@
         android:backgroundTint="#000000"
         android:contentDescription="TODO"
         android:src="@mipmap/icon_coin_u"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

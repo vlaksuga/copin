@@ -16,6 +16,8 @@ import com.example.copinwebapp.data.CheckVersion
 import com.example.copinwebapp.data.RetLogin
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.messaging.FirebaseMessaging
+import io.branch.referral.Branch
+import io.branch.referral.validators.IntegrationValidator
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -249,12 +251,43 @@ class EntryActivity : BaseActivity() {
     private fun executeNext() {
         Log.d(TAG, "executeNext: n : $networkConnect, v : $checkVersion, l : $checkLogin, d : $updateDeviceId ")
         if(networkConnect and checkVersion and checkLogin and updateDeviceId) {
-            // TODO : SET IDENTITY FOR BRANCH HERE
+
+            // Branch Set Identity
+            if(getAppPref("accountPKey") != "") {
+                val branch = Branch.getInstance(applicationContext)
+                branch.setIdentity(getAppPref("accountPKey"))
+            }
+
             val intent = Intent(this, MainWebViewActivity::class.java)
             intent.putExtra("link", link)
             Log.d(TAG, "executeNext: link = $link")
             startActivity(intent)
             finish()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        try {
+            Branch.enableLogging()
+            /*Branch.enableTestMode()*/ // For Test Mode
+            IntegrationValidator.validate(this)
+            Branch.sessionBuilder(this)
+                .withCallback { referringParams, _ -> Log.d(TAG, "Branch Session Builder: $referringParams")}
+                .withData(this.intent.data)
+                .init()
+        } catch (e: Exception) {
+            Log.w(TAG, "onStart: Branch Init Fail", e)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        try {
+            setIntent(intent)
+            Branch.sessionBuilder(this).withCallback { _, _ ->  startActivity(intent)}.reInit()
+        } catch (e: Exception) {
+            Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
         }
     }
 }
