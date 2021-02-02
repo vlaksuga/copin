@@ -3,13 +3,9 @@ package com.example.copinwebapp
 
 import android.util.Log
 import com.android.billingclient.api.*
-import com.example.copinwebapp.data.Confirm
 import org.json.JSONArray
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
-open class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpdatedListener {
+open class WebBillingAgent(private val activity: PayWebViewActivity) : PurchasesUpdatedListener {
 
     companion object {
         const val TAG = "TAG : WebBillingAgent"
@@ -38,6 +34,8 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
 /*                activity.successfulBlocker.visibility = View.VISIBLE
                 activity.processBlocker.visibility = View.GONE
                 activity.productLayout.visibility = View.GONE*/
+                /*activity.webView.loadUrl("javascript:purchaseCompleted()")*/ //
+                activity.selectedRevenue?.let { rev -> activity.branchEventPurchaseCoin(rev) }
                 purchaseList?.let { list ->
                     for (purchase in list) {
                         activity.sendBackEnd(purchase.purchaseToken, purchase.sku)
@@ -117,7 +115,6 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                         Log.d(TAG, "queryInventoryAsync: map $map added")
                     }
 
-                    val productString = "[{pid:'c10', a:'1.99', b:'', off:'', c:'10'}, {pid:'c30', a:'3.99', b:'10',off:'', c:'30'}, {pid:'c100', a:'5.99', b:'35', off:'', c:'100'}, {pid:'coin500', a:'5.99', b:'200',off:'', c:'500', best:'Y'}, {pid:'c1000', a:'5.99', b:'440',off:'', c:'1000'}]"
                     val jsonData = JSONArray(theList)
                     activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')")  }
                     Log.d(TAG, "setDataTt: setData = $jsonData")

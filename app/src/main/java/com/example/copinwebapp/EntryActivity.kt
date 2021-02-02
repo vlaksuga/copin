@@ -16,7 +16,9 @@ import com.example.copinwebapp.data.CheckVersion
 import com.example.copinwebapp.data.RetLogin
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.messaging.FirebaseMessaging
+import io.branch.indexing.BranchUniversalObject
 import io.branch.referral.Branch
+import io.branch.referral.util.ContentMetadata
 import io.branch.referral.validators.IntegrationValidator
 import retrofit2.Call
 import retrofit2.Callback
@@ -29,7 +31,8 @@ class EntryActivity : BaseActivity() {
     }
 
     var link: String? = null
-    var networkConnect = false
+    var toon: String? = null
+    private var networkConnect = false
     var checkVersion = false
     var checkLogin = false
     var updateDeviceId = false
@@ -44,7 +47,8 @@ class EntryActivity : BaseActivity() {
         /* INTENT EXTRA */
         val intent = intent
         intent.extras?.let {
-            link = it.getString("link")
+            link = it.getString("link") // intent from FCM
+            toon = it.getString("toon") // intent from deep link
             Log.d(TAG, "intent extra link = $link")
         }
 
@@ -66,6 +70,53 @@ class EntryActivity : BaseActivity() {
         createNotificationChannels()
     }
 
+    override fun onResume() {
+        Log.d(TAG, "onResume: start")
+        super.onResume()
+
+        /* CHECK LOGIN */
+        checkLogin = checkLogin()
+
+        /* CHECK APP VERSION */
+        checkVersion = checkVersion()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        try {
+            Branch.enableLogging()
+            /*Branch.enableTestMode()*/ // For Test Mode
+            IntegrationValidator.validate(this)
+            Branch.sessionBuilder(this)
+                    .withCallback { referringParams, _ -> Log.d(TAG, "Branch Session Builder: $referringParams")}
+                    .withData(this.intent.data)
+                    .init()
+        } catch (e: Exception) {
+            Log.w(TAG, "onStart: Branch Init Fail", e)
+        }
+
+        // Branch Universal Object
+        val buo = BranchUniversalObject()
+                .setCanonicalIdentifier("item/test")
+                .setTitle("test title")
+                .setContentImageUrl("url")
+                .setContentMetadata(object : ContentMetadata(){}
+                        .addCustomMetadata("key1", "value1")
+                        .addCustomMetadata("key2", "value2")
+
+                )
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        try {
+            setIntent(intent)
+            Branch.sessionBuilder(this).withCallback { _, _ ->  startActivity(intent)}.reInit()
+        } catch (e: Exception) {
+            Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
+        }
+    }
+
     private fun createNotificationChannels() {
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val commonChannelId = applicationContext.getString(R.string.default_notification_channel_id)
@@ -76,17 +127,6 @@ class EntryActivity : BaseActivity() {
         val seriesChannel = NotificationChannel(seriesChannelId, seriesChannelId, NotificationManager.IMPORTANCE_HIGH)
         notificationManager.createNotificationChannels(listOf(commonChannel, eventChannel, seriesChannel))
         Log.d(TAG, "createNotificationChannels: Created")
-    }
-
-    override fun onResume() {
-        Log.d(TAG, "onResume: start")
-        super.onResume()
-
-        /* CHECK LOGIN */
-        checkLogin = checkLogin()
-
-        /* CHECK APP VERSION */
-        checkVersion = checkVersion()
     }
 
     private fun networkConnection(activity: AppCompatActivity): Boolean {
@@ -260,36 +300,23 @@ class EntryActivity : BaseActivity() {
                 branch.setIdentity(getAppPref("accountPKey"))
             }
 
-            val intent = Intent(this, MainWebViewActivity::class.java)
-            intent.putExtra("link", link)
-            Log.d(TAG, "executeNext: link = $link")
+            val intent = Intent(this, MainActivity::class.java)
+            when {
+                link != null -> {
+                    Log.d(TAG, "executeNext: Start intent from FCM")
+                    intent.putExtra("link", link)
+                    Log.d(TAG, "executeNext: link = $link")
+                }
+                toon != null -> {
+                    Log.d(TAG, "executeNext: Start intent from deep link")
+                    intent.putExtra("toon", toon)
+                    Log.d(TAG, "executeNext: toon = $toon")
+                }
+                else -> {}
+            }
             startActivity(intent)
             finish()
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        try {
-            Branch.enableLogging()
-            /*Branch.enableTestMode()*/ // For Test Mode
-            IntegrationValidator.validate(this)
-            Branch.sessionBuilder(this)
-                .withCallback { referringParams, _ -> Log.d(TAG, "Branch Session Builder: $referringParams")}
-                .withData(this.intent.data)
-                .init()
-        } catch (e: Exception) {
-            Log.w(TAG, "onStart: Branch Init Fail", e)
-        }
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        try {
-            setIntent(intent)
-            Branch.sessionBuilder(this).withCallback { _, _ ->  startActivity(intent)}.reInit()
-        } catch (e: Exception) {
-            Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
-        }
-    }
 }

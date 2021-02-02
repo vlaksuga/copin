@@ -29,25 +29,28 @@ import com.google.firebase.auth.*
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import io.branch.referral.Branch
+import io.branch.referral.util.BRANCH_STANDARD_EVENT
+import io.branch.referral.util.BranchEvent
+import io.branch.referral.util.CurrencyType
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class MainWebViewActivity : BaseActivity() {
+open class MainWebViewActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : MainWebView"
-        const val BASE_URL = "https://stage.copincomics.com/"
-        const val GOOGLE_SIGN_IN = 9001
+        const val BASE_URL = "https://stage.copincomics.com/" // base
+        const val GOOGLE_SIGN_IN = 9001 // account
     }
 
     // Firebase Auth
-    lateinit var auth: FirebaseAuth
-    lateinit var googleSignInClient: GoogleSignInClient
-    lateinit var callbackManager: CallbackManager
+    lateinit var auth: FirebaseAuth // base
+    lateinit var googleSignInClient: GoogleSignInClient // account
+    lateinit var callbackManager: CallbackManager // account
 
-    // dummy buttons
+    // dummy buttons // main
     lateinit var fabApple: FloatingActionButton
     lateinit var fabTwitter: FloatingActionButton
     lateinit var fabFacebook: FloatingActionButton
@@ -57,44 +60,55 @@ class MainWebViewActivity : BaseActivity() {
     lateinit var fabPay: FloatingActionButton
     lateinit var fabEmailSignUp: FloatingActionButton
 
-    // Billing Service
-    private val billingAgent = WebBillingAgent(this)
+    // Billing Service // pay
+    private val billingAgent = WebBillingAgent(activity = PayWebViewActivity())
     lateinit var accountPKey: String
+    var selectedRevenue: Double? = null
 
-    lateinit var webView: WebView
-    var currentUrl: String = BASE_URL
+    lateinit var webView: WebView // base
+    var currentUrl: String = BASE_URL // base
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main_web_view)
-        webView = findViewById(R.id.webView)
+        setContentView(R.layout.activity_main_web_view) // base
+        webView = findViewById(R.id.webView) // base
 
-        init()
-        loadingDialog.show()
-        auth = Firebase.auth
-        callbackManager = CallbackManager.Factory.create()
+        init() // base
+        loadingDialog.show() // base
+        auth = Firebase.auth // base
+        callbackManager = CallbackManager.Factory.create() // account
+
+
+        val entryIntent = intent // main
 
         // From Notification
-        val entryIntent = intent
         entryIntent.getStringExtra("link")?.let { link ->
             currentUrl = link
             Log.d(TAG, "onCreate: currentUrl = $link")
-        }
+        } // main
+
+        // From Toon:// URI SCHEME
+        entryIntent.getStringExtra("toon")?.let { toon ->
+            currentUrl = "$BASE_URL?c=toon&k=$toon"
+            Log.d(TAG, "onCreate: currentUrl = $BASE_URL?c=toon&k=$toon")
+        } // main
 
         // dummy buttons
-        fabApple = findViewById(R.id.apple_login_btn)
-        fabTwitter = findViewById(R.id.twitter_login_btn)
-        fabFacebook = findViewById(R.id.facebook_login_btn)
-        fabGoogle = findViewById(R.id.google_login_btn)
-        fabEmail = findViewById(R.id.email_login_btn)
-        fabLogout = findViewById(R.id.logout_btn)
-        fabPay = findViewById(R.id.purchase_btn)
-        fabEmailSignUp = findViewById(R.id.email_sign_up_btn)
+        fabApple = findViewById(R.id.apple_login_btn) // main
+        fabTwitter = findViewById(R.id.twitter_login_btn) // main
+        fabFacebook = findViewById(R.id.facebook_login_btn) // main
+        fabGoogle = findViewById(R.id.google_login_btn) // main
+        fabEmail = findViewById(R.id.email_login_btn) // main
+        fabLogout = findViewById(R.id.logout_btn) // main
+        fabPay = findViewById(R.id.purchase_btn) // main
+        fabEmailSignUp = findViewById(R.id.email_sign_up_btn) // main
 
-        fabGoogle.setOnClickListener { startPayActivity() }
+        // test listeners for test
+        fabGoogle.setOnClickListener { branchEventPurchaseCoin(1.5) } // main
 
 
+        // webView settings // base
         webView.settings.domStorageEnabled = true
         webView.settings.javaScriptEnabled = true
         webView.settings.setSupportZoom(false)
@@ -133,7 +147,8 @@ class MainWebViewActivity : BaseActivity() {
                 }
                 return false
             }
-        }
+        } // base
+
         webView.webChromeClient = object : WebChromeClient() {
             override fun onReceivedTouchIconUrl(
                 view: WebView?,
@@ -178,128 +193,17 @@ class MainWebViewActivity : BaseActivity() {
                 Log.d(TAG, "onReceivedTitle : ${webView.url.toString()} ${title.toString()} ")
             }
 
-        }
+        } // base
 
-        webView.addJavascriptInterface(
-                object {
-                    @JavascriptInterface
-                    fun showToast(msg: String) {
-                        Toast.makeText(this@MainWebViewActivity, msg, Toast.LENGTH_SHORT).show()
-                    }
+        webView.addJavascriptInterface(object : WebViewJavascriptInterface(){}, "AndroidCopin") // base
 
-                    @JavascriptInterface
-                    fun googleLogin() {
-                        Log.d(TAG, "googleLogin: invoked")
-                        googleSignIn()
-                    }
-
-                    @JavascriptInterface
-                    fun facebookLogin() {
-                        Log.d(TAG, "facebookLogin: invoked")
-                        facebookLoginInApp()
-                    }
-
-                    @JavascriptInterface
-                    fun twitterLogin() {
-                        Log.d(TAG, "twitterLogin: invoked")
-                        signInWithProvider("twitter.com")
-                    }
-
-                    @JavascriptInterface
-                    fun appleLogin() {
-                        Log.d(TAG, "appleLogin: invoked")
-                        signInWithProvider("apple.com")
-                    }
-
-                    @JavascriptInterface
-                    fun androidLogout() {
-                        Log.d(TAG, "androidLogout: invoked")
-                        logout()
-                    }
-
-                    @JavascriptInterface
-                    fun setLTokens(t: String, lt: String) {
-                        Log.d(TAG, "setLTokens: invoked")
-                        putAppPref("lt", lt)
-                        putAppPref("t", t)
-                        setCookie()
-                    }
-
-                    @JavascriptInterface
-                    fun goCoinShop() {
-                        Log.d(TAG, "goCoinShop: invoked")
-                        startPayActivity()
-                    }
-
-                    @JavascriptInterface
-                    fun goWebCoinShop() {
-                        Log.d(TAG, "goWebCoinShop: invoked")
-                        startWebPayActivity()
-                    }
-
-                    @JavascriptInterface
-                    fun branchEvent(eventName: String, mapConvertibleJsonString: String?) {
-                        var obj = ""
-                        if (mapConvertibleJsonString == null || "" == mapConvertibleJsonString) {
-                            obj = "{}"
-                        } else {
-                            obj = mapConvertibleJsonString
-                        }
-                        Log.d(TAG, "branchEvent: $mapConvertibleJsonString")
-                        Log.d(TAG, "branchEvent: $eventName")
-                        var jsonObj = JSONObject("{}")
-                        try {
-                            jsonObj = JSONObject(obj)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "branchEvent: error", e)
-                        }
-                        val branch = Branch.getInstance()
-                        branch.userCompletedAction(eventName, jsonObj)
-                        /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
-                    }
-
-                    @JavascriptInterface
-                    fun goNotificationSetting(channelId: String) {
-                        Log.d(TAG, "goNotificationSetting: invoked")
-                        notificationSetting(channelId)
-                    }
-
-                    @JavascriptInterface
-                    fun goSharePage(msg: String) {
-                        Log.d(TAG, "shareContent: invoked")
-                        sharePage(msg)
-                    }
-
-                    @JavascriptInterface
-                    fun initCoin() {
-                        Log.d(TAG, "initCoin: invoked")
-                        payInit()
-                    }
-
-                    @JavascriptInterface
-                    fun selectProduct(id: String) {
-                        Log.d(TAG, "selectProduct: id = $id")
-                        billingAgent.launchBillingFlow(
-                                when (id) {
-                                    "c10" -> billingAgent.dataSorted[0]
-                                    "c30" -> billingAgent.dataSorted[1]
-                                    "c100" -> billingAgent.dataSorted[2]
-                                    "c500" -> billingAgent.dataSorted[3]
-                                    "c1000" -> billingAgent.dataSorted[4]
-                                    else -> billingAgent.dataSorted[0]
-                                }
-                        )
-                    }
-                }, "AndroidCopin"
-        )
-
-        setCookie()
-        accountPKey = getAppPref("accountPKey")
+        setCookie() // main
+        accountPKey = getAppPref("accountPKey") // base
         Log.d(TAG, "onCreate: accountPKey = $accountPKey")
-        webView.loadUrl(currentUrl)
+        webView.loadUrl(currentUrl) // Each
     }
 
-    private fun payInit () {
+    private fun payInit() {
         Log.d(TAG, "payInit: invoked")
         try {
             billingAgent.buildBillingClient()
@@ -310,20 +214,20 @@ class MainWebViewActivity : BaseActivity() {
             Toast.makeText(this, "Error! Please Try Again!", Toast.LENGTH_SHORT).show()
             finish()
         }
-    }
+    } // pay
 
     private fun startWebPayActivity() {
         /*webView.loadUrl("https://stage.copincomics.com/?c=tx&m=payment")*/
         val webPayIntent = Intent(this, PayActivity2::class.java)
         startActivity(webPayIntent)
-    }
+    } // pay
 
-    private fun startPayActivity() {
+    fun startPayActivity() {
             val payIntent = Intent(this, PayActivity::class.java)
             startActivity(payIntent)
-    }
+    } // pay
 
-    private fun signInWithProvider(providerId: String) {
+    fun signInWithProvider(providerId: String) {
         val provider: OAuthProvider.Builder = OAuthProvider.newBuilder(providerId)
         val pendingResultTask: Task<AuthResult>? = auth.pendingAuthResult
         if(auth.pendingAuthResult != null) {
@@ -347,9 +251,9 @@ class MainWebViewActivity : BaseActivity() {
                     Log.e(TAG, "signInWithProvider: Fail", e)
                 }
         }
-    }
+    } // account
 
-    private fun setCookie() {
+    fun setCookie() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.apply {
             setAcceptCookie(true)
@@ -358,7 +262,7 @@ class MainWebViewActivity : BaseActivity() {
             setCookie("live.copincomics.com", "copinandroid=${getAppPref("t")}")
         }
         Log.d(TAG, "setCookie: cookie = copinandroid=${getAppPref("t")}")
-    }
+    } // account
 
     private fun signInWithCredential(credential: AuthCredential) {
         loadingDialog.show()
@@ -367,10 +271,19 @@ class MainWebViewActivity : BaseActivity() {
                 if (task.isSuccessful) {
                     Log.d(TAG, "signInWithCredential: success")
                     val user = auth.currentUser
-                    user?.let { loginAuthServerWithFirebaseUser(it) }
+                    user?.let {
+                        loginAuthServerWithFirebaseUser(it)
+                        if(it.metadata?.creationTimestamp != it.metadata?.lastSignInTimestamp) {
+                            Log.d(TAG, "signInWithCredential: ${user.providerData[1].providerId} ")
+                            for(provider in user.providerData) {
+                                Log.d(TAG, "signInWithCredential: ${provider.providerId}")
+                            }
+                            /*Branch.getInstance().userCompletedAction("create_account")*/
+                        }
+                    }
                 }
             }
-    }
+    } // account
 
     private fun loginAuthServerWithFirebaseUser(user: FirebaseUser) {
         try {
@@ -425,11 +338,11 @@ class MainWebViewActivity : BaseActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "loginAuthServerWithFirebaseUser: Fail", e)
         }
-    }
+    } // account
 
-    private fun restartToBaseUrl() { webView.loadUrl(BASE_URL) }
+    private fun restartToBaseUrl() { webView.loadUrl(BASE_URL) } // base
 
-    private fun googleSignIn() {
+    fun googleSignIn() {
         Log.d(TAG, "googleSignIn: invoked")
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
@@ -438,9 +351,9 @@ class MainWebViewActivity : BaseActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, gso)
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, GOOGLE_SIGN_IN)
-    }
+    } // account
 
-    private fun facebookLoginInApp() {
+    fun facebookLoginInApp() {
         val loginManager = LoginManager.getInstance()
         loginManager.logInWithReadPermissions(this, arrayListOf("email", "public_profile"))
         loginManager.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
@@ -465,9 +378,9 @@ class MainWebViewActivity : BaseActivity() {
                 ).show()
             }
         })
-    }
+    } // account
 
-    private fun logout() {
+    fun logout() {
         AuthUI.getInstance().signOut(this).addOnCompleteListener {
             putAppPref("lt", "")
             putAppPref("l", "")
@@ -478,7 +391,7 @@ class MainWebViewActivity : BaseActivity() {
             startActivity(intent)
             finish()
         }
-    }
+    } // account
 
     private fun notificationSetting(channelId: String) {
         Log.d(TAG, "notificationSetting: channelId = $channelId")
@@ -489,7 +402,7 @@ class MainWebViewActivity : BaseActivity() {
             putExtra(Settings.EXTRA_CHANNEL_ID, mChannel)
         }
         startActivity(intent)
-    }
+    } // base
 
     private fun sharePage(msg: String) {
         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -498,7 +411,7 @@ class MainWebViewActivity : BaseActivity() {
         }
         val shareIntent = Intent.createChooser(intent, "Copin Comics")
         startActivity(shareIntent)
-    }
+    } // base
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
@@ -516,7 +429,16 @@ class MainWebViewActivity : BaseActivity() {
                 Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
         })
-    }
+    } // pay
+
+    fun branchEventPurchaseCoin(revenue: Double) {
+        Log.d(TAG, "branchEventPurchaseCoin: invoked")
+        BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
+                .setCurrency(CurrencyType.USD)
+                .setRevenue(revenue)
+                .setDescription("Purchase Coin")
+                .logEvent(this)
+    } // pay
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -541,11 +463,11 @@ class MainWebViewActivity : BaseActivity() {
             Log.d(TAG, "onActivityResult: $data")
             Log.d(TAG, "onActivityResult: else")
         }
-    }
+    } // account
 
     override fun onBackPressed() {
         when {
-            currentUrl == BaseWebViewActivity.BASE_URL -> {
+            currentUrl == BASE_URL -> {
                 val builder = AlertDialog.Builder(this, R.style.AlertDialogCustom)
                 builder.apply {
                     setMessage("Do you really want to quit?")
@@ -584,11 +506,131 @@ class MainWebViewActivity : BaseActivity() {
 
             }
         }
-    }
+    } // base
 
     override fun onStop() {
         super.onStop()
         loadingDialog.dismiss()
-    }
+    } // base
+
+
+    open inner class WebViewJavascriptInterface {
+        @JavascriptInterface
+        fun showToast(msg: String) {
+            Toast.makeText(this@MainWebViewActivity, msg, Toast.LENGTH_SHORT).show()
+        }
+
+        @JavascriptInterface
+        fun googleLogin() {
+            Log.d(TAG, "googleLogin: invoked")
+            googleSignIn()
+        }
+
+        @JavascriptInterface
+        fun facebookLogin() {
+            Log.d(TAG, "facebookLogin: invoked")
+            facebookLoginInApp()
+        }
+
+        @JavascriptInterface
+        fun twitterLogin() {
+            Log.d(TAG, "twitterLogin: invoked")
+            signInWithProvider("twitter.com")
+        }
+
+        @JavascriptInterface
+        fun appleLogin() {
+            Log.d(TAG, "appleLogin: invoked")
+            signInWithProvider("apple.com")
+        }
+
+        @JavascriptInterface
+        fun androidLogout() {
+            Log.d(TAG, "androidLogout: invoked")
+            logout()
+        }
+
+        @JavascriptInterface
+        fun setLTokens(t: String, lt: String) {
+            Log.d(TAG, "setLTokens: invoked")
+            putAppPref("lt", lt)
+            putAppPref("t", t)
+            setCookie()
+        }
+
+        @JavascriptInterface
+        fun goCoinShop() {
+            Log.d(TAG, "goCoinShop: invoked")
+            startPayActivity()
+        }
+
+        @JavascriptInterface
+        fun goWebCoinShop() {
+            Log.d(TAG, "goWebCoinShop: invoked")
+            startWebPayActivity()
+        }
+
+        @JavascriptInterface
+        fun branchEvent(eventName: String, mapConvertibleJsonString: String?) {
+            var obj = ""
+            if (mapConvertibleJsonString == null || "" == mapConvertibleJsonString) {
+                obj = ""
+            } else {
+                obj = mapConvertibleJsonString
+            }
+            Log.d(TAG, "branchEvent: $mapConvertibleJsonString")
+            Log.d(TAG, "branchEvent: $eventName")
+            var jsonObj = JSONObject("")
+            try {
+                jsonObj = JSONObject(obj)
+                val branch = Branch.getInstance()
+                branch.userCompletedAction(eventName, jsonObj)
+            } catch (e: Exception) {
+                Log.e(TAG, "branchEvent: error", e)
+            }
+            val branch = Branch.getInstance()
+            branch.userCompletedAction(eventName, jsonObj)
+            /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
+        }
+
+        @JavascriptInterface
+        fun goNotificationSetting(channelId: String) {
+            Log.d(TAG, "goNotificationSetting: invoked")
+            notificationSetting(channelId)
+        }
+
+        @JavascriptInterface
+        fun goSharePage(msg: String) {
+            Log.d(TAG, "shareContent: invoked")
+            sharePage(msg)
+        }
+
+        @JavascriptInterface
+        fun initCoin() {
+            Log.d(TAG, "initCoin: invoked")
+            payInit()
+        }
+
+        @JavascriptInterface
+        fun selectProduct(id: String) {
+            Log.d(TAG, "selectProduct: id = $id")
+            val revenueList = arrayListOf(1.99, 3.99, 12.99, 59.99, 109.99)
+            val productIndex: Int? = when(id) {
+                "c10" -> 0
+                "c30" -> 1
+                "c100" -> 2
+                "c500" -> 3
+                "c1000" -> 4
+                else -> null
+            }
+            if (productIndex != null) {
+                billingAgent.launchBillingFlow(billingAgent.dataSorted[productIndex])
+                selectedRevenue = revenueList[productIndex]
+            } else {
+                Toast.makeText(this@MainWebViewActivity, "Product Id Invalid", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "selectProduct: Invalid Product Index")
+            }
+        }
+    } // pay
 
 }

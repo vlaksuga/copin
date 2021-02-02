@@ -26,9 +26,21 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <data
+                    android:host="open"
+                    android:scheme="toon" />
+
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
         </activity>
-        <activity android:name=".BaseWebViewActivity" />
         <activity android:name=".MainWebViewActivity" />
+        <activity android:name=".BaseWebViewActivity"/>
+        <activity android:name=".MainActivity"/>
+        <activity android:name=".AccountWebViewActivity"/>
+        <activity android:name=".PayWebViewActivity"/>
 
         <service
             android:name=".MyFirebaseMessageService"
