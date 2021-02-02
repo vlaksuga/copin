@@ -14,12 +14,12 @@ interface AccountDAO {
 
     @GET("a/processLoginByToken.json")
     fun processLoginByToken(
-        @Query("lt") lt: String,
+        @Query("lt") lt: String
     ): Call<RetLogin>
 
     @GET("a/processLoginFirebase.json")
     fun processLoginFirebase(
-        @Query("idtoken") idtoken: String,
+        @Query("idtoken") idtoken: String
     ): Call<RetLogin>
 
 

@@ -18,8 +18,8 @@ open class BaseActivity : AppCompatActivity() {
     lateinit var loadingDialog: AlertDialog
 
     fun init() {
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         sharedPreferences = applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         repo = ServiceRepo(sharedPreferences)
         val builder = AlertDialog.Builder(this)
         builder.setCancelable(false)

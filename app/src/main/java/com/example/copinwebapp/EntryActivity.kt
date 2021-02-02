@@ -64,7 +64,6 @@ class EntryActivity : BaseActivity() {
 
         /* CREATE NOTIFICATION CHANNELS */
         createNotificationChannels()
-
     }
 
     private fun createNotificationChannels() {
@@ -114,6 +113,7 @@ class EntryActivity : BaseActivity() {
                 task.result?.let {
                     putAppPref("deviceId", it)
                     Log.d(TAG, "updateDeviceId: firebase instance id : $it")
+                    Log.d(TAG, "updateDeviceId: ${getAppPref("deviceId")}")
                 }
             } else {
                 putAppPref("deviceId", "fail_to_get_FCM_instance_token")
@@ -192,6 +192,7 @@ class EntryActivity : BaseActivity() {
     private fun checkLogin(): Boolean {
         val lt = getAppPref("lt")
         if (lt != "") {
+            Log.d(TAG, "checkLogin: lt is not empty")
             try {
                 repo.accountDAO.processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
                     override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
@@ -206,6 +207,7 @@ class EntryActivity : BaseActivity() {
                                     putAppPref("accountPKey", ret.userinfo.accountpkey)
                                     Log.d(TAG, "onResponse: Login Token = ${ret.t2}")
                                     Log.d(TAG, "onResponse: Access Token = ${ret.token}")
+                                    Log.d(TAG, "onResponse: AccountPKey = ${ret.userinfo.accountpkey}")
                                 } else {
                                     emptyUserPreference()
                                     Log.d(TAG, "onResponse: login fail message (${head.msg})")

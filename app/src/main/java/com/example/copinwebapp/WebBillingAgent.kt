@@ -2,14 +2,14 @@ package com.example.copinwebapp
 
 
 import android.util.Log
-import android.view.View
 import com.android.billingclient.api.*
 import com.example.copinwebapp.data.Confirm
+import org.json.JSONArray
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpdatedListener {
+open class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpdatedListener {
 
     companion object {
         const val TAG = "TAG : WebBillingAgent"
@@ -18,13 +18,13 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
     private var productDetailList: MutableList<SkuDetails>? = null
     private val productIdsList = arrayListOf("c10", "c30", "c100", "c500", "c1000")
     private val bonusList = arrayListOf("0", "10", "35", "200", "440")
-    private val bestTagList = arrayListOf(false, false, false, true, false)
-    private var currentCellPosition = 0
-    private var dataSorted = listOf<SkuDetails>()
+    private val coinList = arrayListOf("10", "30", "100", "500", "1000")
+    private val bestTagList = arrayListOf("", "", "", "Y", "")
+    var dataSorted = listOf<SkuDetails>()
 
     private lateinit var billingClient: BillingClient
 
-    fun init() {
+    fun buildBillingClient() {
         billingClient = BillingClient.newBuilder(activity)
             .enablePendingPurchases()
             .setListener(this)
@@ -34,44 +34,32 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
     override fun onPurchasesUpdated(result: BillingResult, purchaseList: MutableList<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                activity.successfulBlocker.visibility = View.VISIBLE
+                // TODO : SEND SERVER OK RESPONSE FOR COMPLETE COVER VIEW
+/*                activity.successfulBlocker.visibility = View.VISIBLE
                 activity.processBlocker.visibility = View.GONE
-                activity.productLayout.visibility = View.GONE
+                activity.productLayout.visibility = View.GONE*/
                 purchaseList?.let { list ->
                     for (purchase in list) {
-                        sendBackEnd(purchase.purchaseToken, purchase.sku)
-                        Log.d(PayActivity.TAG, "onPurchasesUpdated: List = $list")
+                        activity.sendBackEnd(purchase.purchaseToken, purchase.sku)
+                        Log.d(TAG, "onPurchasesUpdated: List = $list")
                     }
                 }
+
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
+                Log.d(TAG, "onPurchasesUpdated: USER CANCELED")
             }
             BillingClient.BillingResponseCode.SERVICE_TIMEOUT -> {
+                Log.d(TAG, "onPurchasesUpdated: SERVICE TIMEOUT")
             }
             else -> {
             }
         }
     }
 
-    private fun sendBackEnd(purchaseToken: String, sku: String) {
-        BaseActivity().repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
-            override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
-                response.body()?.let { res ->
-                    if (res.body.result == "OK") {
-                        consumePurchase(purchaseToken)
-                    } else {
-                        Log.d(PayActivity.TAG, "onResponse: BackEnd Says Not OK")
-                    }
-                }
-            }
 
-            override fun onFailure(call: Call<Confirm>, t: Throwable) {
-                Log.e(PayActivity.TAG, "onFailure: Confirm from backend fail", t)
-            }
-        })
-    }
 
-    private fun consumePurchase(purchaseToken: String) {
+    fun consumePurchase(purchaseToken: String) {
         val consumeParams = ConsumeParams.newBuilder()
             .setPurchaseToken(purchaseToken)
             .build()
@@ -101,7 +89,6 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
 
     private fun queryInventoryAsync() {
         Log.d(TAG, "queryInventoryAsync: invoked")
-        val recyclerView = activity.rv
         val params = SkuDetailsParams.newBuilder()
         params.setSkusList(productIdsList)
             .setType(BillingClient.SkuType.INAPP)
@@ -115,18 +102,26 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
                     productDetailList = skuDetails
                     dataSorted = productDetailList!!.sortedBy { it.priceAmountMicros }
                     Log.d(TAG, "queryInventoryAsync: dataSorted = $dataSorted")
-                    recyclerView.adapter = SkuDetailAdapter(dataSorted, bonusList, bestTagList)
-                    (activity.rv.adapter as SkuDetailAdapter).setProductCellClickListener(object :
-                        SkuDetailAdapter.ProductCellClickListener {
-                        override fun onCellClick(position: Int) {
-                            currentCellPosition = position
-                            activity.processBlocker.visibility = View.VISIBLE
-                            activity.successfulBlocker.visibility = View.GONE
-                            activity.productLayout.visibility = View.GONE
-                            launchBillingFlow(dataSorted[position])
-                            Log.d(TAG, "onCellClick: position = $position")
-                        }
-                    })
+
+                    // DRAW LIST WITH SKU DETAILS
+                    val theList = arrayListOf<HashMap<String, String>>()
+                    for((index, data) in dataSorted.withIndex()) {
+                        val map : HashMap<String, String> = hashMapOf()
+                        map["pid"] = data.sku
+                        map["a"] = data.price
+                        map["b"] = bonusList[index]
+                        map["off"] = ""
+                        map["c"] = coinList[index]
+                        map["best"] = bestTagList[index]
+                        theList.add(map)
+                        Log.d(TAG, "queryInventoryAsync: map $map added")
+                    }
+
+                    val productString = "[{pid:'c10', a:'1.99', b:'', off:'', c:'10'}, {pid:'c30', a:'3.99', b:'10',off:'', c:'30'}, {pid:'c100', a:'5.99', b:'35', off:'', c:'100'}, {pid:'coin500', a:'5.99', b:'200',off:'', c:'500', best:'Y'}, {pid:'c1000', a:'5.99', b:'440',off:'', c:'1000'}]"
+                    val jsonData = JSONArray(theList)
+                    activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')")  }
+                    Log.d(TAG, "setDataTt: setData = $jsonData")
+                    Log.d(TAG, "queryInventoryAsync: Completed")
                 }
             } else {
                 Log.d(TAG, "queryInventoryAsync: Response Code is Not OK")
@@ -141,6 +136,7 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
             .setObfuscatedAccountId("${activity.accountPKey}:$productId")
             .build()
         billingClient.launchBillingFlow(activity, flowParams)
+        Log.d(TAG, "launchBillingFlow: pkey = ${activity.accountPKey}, pid = $productId")
     }
 
     fun checkProductUnconsumed() {
@@ -149,21 +145,11 @@ class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpda
         if (purchaseList != null) {
             Log.d(PayActivity.TAG, "checkProductUnconsumed: ${purchaseList.size} unconsumed items")
             for (purchase in purchaseList) {
-                sendBackEnd(purchase.purchaseToken, purchase.sku)
+                activity.sendBackEnd(purchase.purchaseToken, purchase.sku)
             }
-            activity.updateCoin()
         } else {
             Log.d(PayActivity.TAG, "checkProductUnconsumed: No unconsumed item")
-            activity.updateCoin()
         }
-    }
-
-    fun tryAgain() {
-        activity.processBlocker.visibility = View.VISIBLE
-        activity.successfulBlocker.visibility = View.GONE
-        activity.productLayout.visibility = View.GONE
-        launchBillingFlow(dataSorted[currentCellPosition])
-        Log.d(TAG, "onCellClick: tryAgain position = $currentCellPosition")
     }
 
 }
