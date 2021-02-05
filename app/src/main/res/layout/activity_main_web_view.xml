@@ -47,7 +47,7 @@
         android:layout_marginStart="24dp"
         android:backgroundTint="@color/black"
         android:src="@android:mipmap/sym_def_app_icon"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
@@ -59,7 +59,7 @@
         android:layout_marginStart="16dp"
         android:backgroundTint="#0077FF"
         android:src="@android:mipmap/sym_def_app_icon"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/apple_login_btn"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
@@ -71,7 +71,7 @@
         android:layout_marginStart="16dp"
         android:backgroundTint="#0000FF"
         android:src="@android:mipmap/sym_def_app_icon"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/twitter_login_btn"
         app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
