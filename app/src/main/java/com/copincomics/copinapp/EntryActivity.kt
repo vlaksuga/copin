@@ -1,20 +1,16 @@
 package com.copincomics.copinapp
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import com.copincomics.copinapp.data.CheckVersion
 import com.copincomics.copinapp.data.RetLogin
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.messaging.FirebaseMessaging
 import io.branch.referral.Branch
 import io.branch.referral.validators.IntegrationValidator
@@ -28,15 +24,15 @@ class EntryActivity : BaseActivity() {
         const val TAG = "TAG : Entry"
     }
 
-    var link: String? = null
-    var toon: String? = null
+    private var link: String? = null
+    private var toon: String? = null
 
     private var networkConnect = false
     private val fm = FirebaseMessaging.getInstance()
-    var checkVersion = false
-    var checkLogin = false
-    var updateDeviceId = false
-    var subTopic = false
+    private var checkVersion = false
+    private var checkLogin = false
+    private var updateDeviceId = false
+    private var subTopic = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,9 +57,6 @@ class EntryActivity : BaseActivity() {
         if (networkConnection(this)) {
             networkConnect = true
             checkVersion()
-            checkLogin()
-            updateDeviceId()
-            subscribeInit()
         } else {
             Log.d(TAG, "onCreate: network error ")
             val builder = AlertDialog.Builder(this)
@@ -81,63 +74,31 @@ class EntryActivity : BaseActivity() {
             Branch.enableLogging()
             IntegrationValidator.validate(this)
             Branch.sessionBuilder(this)
-                    .withCallback { referringParams, _ -> Log.d(TAG, "Branch Session Builder: $referringParams")}
-                    .withData(this.intent.data)
-                    .init()
+                .withCallback { referringParams, _ ->
+                    Log.d(
+                        TAG,
+                        "Branch Session Builder: $referringParams"
+                    )
+                }
+                .withData(this.intent.data)
+                .init()
         } catch (e: Exception) {
             Log.w(TAG, "onStart: Branch Init Fail", e)
         }
-    }
-
-    private fun subscribeInit() {
-        Log.d(TAG, "subscribeInit: invoked")
-        if(getAppPref("subInit") != "Y") {
-            Log.d(TAG, "subscribeInit: invoked")
-            fm.subscribeToTopic("Notice")
-                    .addOnCompleteListener {
-                        if(it.isSuccessful) {
-                            Log.d(TAG, "subscribeInit: notice")
-                            putAppPref("Notice", "Y")
-                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Notice")} ")
-                        }
-                    }
-
-            fm.subscribeToTopic("Event")
-                    .addOnCompleteListener {
-                        if(it.isSuccessful) {
-                            Log.d(TAG, "subscribeInit: event")
-                            putAppPref("Event", "Y")
-                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Event")} ")
-                        }
-                    }
-
-            fm.subscribeToTopic("Series")
-                    .addOnCompleteListener {
-                        if(it.isSuccessful) {
-                            Log.d(TAG, "subscribeInit: series")
-                            putAppPref("Series", "Y")
-                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Series")} ")
-                        }
-                    }
-            putAppPref("subInit", "Y")
-            subTopic = true
-            executeNext()
-        }
-        subTopic = true
-        executeNext()
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         try {
             setIntent(intent)
-            Branch.sessionBuilder(this).withCallback { _, _ ->  startActivity(intent)}.reInit()
+            Branch.sessionBuilder(this).withCallback { _, _ -> startActivity(intent) }.reInit()
         } catch (e: Exception) {
             Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
         }
     }
 
     private fun networkConnection(activity: AppCompatActivity): Boolean {
+        Log.d(TAG, "networkConnection: start")
         val result: Boolean
         val connectivityManager =
             activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -151,10 +112,133 @@ class EntryActivity : BaseActivity() {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
             else -> false
         }
+        Log.d(TAG, "networkConnection: end")
         return result
     }
 
+    private fun checkVersion() {
+        Log.d(TAG, "checkVersion: start")
+        repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
+            override fun onResponse(
+                call: Call<CheckVersion>,
+                response: Response<CheckVersion>
+            ) {
+                response.body()?.let { res ->
+                    val minVersion = res.body.ANDROIDMIN.toInt()
+                    val recentVersion = res.body.ANDROIDRECENT.toInt()
+                    val apiURL11: String = res.body.APIURL11
+                    val entryURL11: String = res.body.ENTRYURL11
+                    val defaultEntryURL = res.body.DEFAULTENTRYURL
+                    val defaultApiURL = res.body.DEFAULTAPIURL
+                    Log.d(TAG, "onResponse: curVersion : $curVersion")
+                    Log.d(TAG, "onResponse: recentVersion : $recentVersion")
+                    if (curVersion < minVersion) {
+                        val builder = AlertDialog.Builder(this@EntryActivity)
+                        builder.setMessage("Confirm to upgrade version?")
+                            .setPositiveButton("Confirm") { _, _ ->
+                                startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
+                                    )
+                                )
+                                finish()
+                            }
+                            .show()
+                    } else {
+                        Log.d(TAG, "onResponse: No need to update app")
+                        if (curVersion >= recentVersion) {
+                            Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
+                            Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
+                            putAppPref("e", defaultEntryURL)
+                            putAppPref("a", defaultApiURL)
+
+                            if (entryURL11.isBlank() or entryURL11.isEmpty()) {
+                                putAppPref("e", entryURL11)
+                            }
+
+                            if (entryURL11.isBlank() or entryURL11.isEmpty()) {
+                                putAppPref("a", apiURL11)
+                            } else {
+                                Log.d(TAG, "onResponse: defaultEntry")
+                            }
+
+                        } else {
+                            putAppPref("e", defaultEntryURL)
+                            putAppPref("a", defaultApiURL)
+                            Log.d(TAG, "onResponse: defaultEntryURL = $defaultEntryURL")
+                            Log.d(TAG, "onResponse: defaultApiURL = $defaultApiURL")
+                            Log.d(TAG, "onResponse: recentVersion adapted")
+
+                        }
+                    }
+
+                    checkVersion = true
+                    Log.d(TAG, "checkVersion: end")
+                    checkLogin()
+                }
+            }
+
+            override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
+                Log.w(TAG, "onFailure: check version error", t)
+                Log.d(TAG, "onFailure: start Default version mode")
+                checkVersion = true
+                Log.d(TAG, "checkVersion: end")
+                checkLogin()
+            }
+        })
+    }
+
+    private fun checkLogin() {
+        Log.d(TAG, "checkLogin: start")
+        val lt = getAppPref("lt")
+        if (lt != "") {
+            Log.d(TAG, "checkLogin: lt is not empty")
+            repo.accountDAO.processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
+                override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
+                    response.body()?.let { res ->
+                        val head = res.head
+                        if (head.status != "error") {
+                            val ret = res.body
+                            putAppPref("lt", ret.t2)
+                            putAppPref("t", ret.token)
+                            putAppPref("nick", ret.userinfo.nick)
+                            putAppPref("accountPKey", ret.userinfo.accountpkey)
+                            Log.d(TAG, "onResponse: Login Token = ${ret.t2}")
+                            Log.d(TAG, "onResponse: Access Token = ${ret.token}")
+                            Log.d(
+                                TAG,
+                                "onResponse: AccountPKey = ${ret.userinfo.accountpkey}"
+                            )
+                        } else {
+                            emptyAccountPreference()
+                            Log.d(TAG, "onResponse: login fail message (${head.msg})")
+                        }
+                        checkLogin = true
+                        Log.d(TAG, "checkLogin: end")
+                        updateDeviceId()
+                    }
+                }
+
+                override fun onFailure(call: Call<RetLogin>, t: Throwable) {
+                    Log.w(TAG, "onFailure: error", t)
+                    emptyAccountPreference()
+                    checkLogin = true
+                    Log.d(TAG, "checkLogin: end")
+                    updateDeviceId()
+                }
+            })
+        } else {
+            emptyAccountPreference()
+            checkLogin = true
+            Log.d(TAG, "checkLogin: end")
+            updateDeviceId()
+        }
+        Log.d(TAG, "checkLogin: $checkLogin")
+    }
+
     private fun updateDeviceId() {
+        Log.d(TAG, "updateDeviceId: start")
         val fcm = FirebaseMessaging.getInstance()
         fcm.token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
@@ -162,170 +246,77 @@ class EntryActivity : BaseActivity() {
                     putAppPref("deviceId", it)
                     Log.d(TAG, "updateDeviceId: firebase instance id : $it")
                     Log.d(TAG, "updateDeviceId: in pref ${getAppPref("deviceId")}")
+                    updateDeviceId = true
+                    Log.d(TAG, "updateDeviceId: end")
+                    subscribeInit()
                 }
             } else {
                 putAppPref("deviceId", "fail_to_get_FCM_instance_token")
                 Log.d(TAG, "updateDeviceId: firebase instance id : Fail")
+                updateDeviceId = true
+                Log.d(TAG, "updateDeviceId: end")
+                subscribeInit()
 
             }
-            updateDeviceId = true
-            executeNext()
+
         }
     }
 
-    private fun checkVersion() {
-        val body = repo.accountDAO.requestCheckVersion().execute().body()
-        Log.d(TAG, "execute: body = $body")
-/*        try {
-            repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
-                override fun onResponse(
-                        call: Call<CheckVersion>,
-                        response: Response<CheckVersion>
-                ) {
-                    response.body()?.let { res ->
-                        val minVersion = res.body.ANDROIDMIN.toInt()
-                        val recentVersion = res.body.ANDROIDRECENT.toInt()
-                        val apiURL11: String? = res.body.APIURL11
-                        val entryURL11: String? = res.body.ENTRYURL11
-                        val defaultEntryURL = res.body.DEFAULTENTRYURL
-                        val defaultApiURL = res.body.DEFAULTAPIURL
-                        Log.d(TAG, "onResponse: curVersion : $curVersion")
-                        Log.d(TAG, "onResponse: recentVersion : $recentVersion")
-                        if (curVersion < minVersion) {
-                            val builder = AlertDialog.Builder(this@EntryActivity)
-                            builder.setMessage("Confirm to upgrade version?")
-                                    .setPositiveButton("Confirm") { _, _ ->
-                                        startActivity(
-                                                Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
-                                                )
-                                        )
-                                        finish()
-                                    }
-                                    .show()
-                        } else {
-                            Log.d(TAG, "onResponse: No need to update app")
-                            if (curVersion >= recentVersion) {
-                                Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
-                                Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
-                                putAppPref("e", defaultEntryURL)
-                                putAppPref("a", defaultApiURL)
-
-                                if (entryURL11 != null) {
-                                    putAppPref("e", entryURL11)
-                                }
-
-                                if (apiURL11 != null) {
-                                    putAppPref("a", apiURL11)
-                                } else {
-                                    Log.d(TAG, "onResponse: defaultEntry")
-                                }
-
-                            } else {
-                                putAppPref("e", defaultEntryURL)
-                                putAppPref("a", defaultApiURL)
-                                Log.d(TAG, "onResponse: defaultEntryURL = $defaultEntryURL")
-                                Log.d(TAG, "onResponse: defaultApiURL = $defaultApiURL")
-                                Log.d(TAG, "onResponse: recentVersion adapted")
-
-                            }
+    private fun subscribeInit() {
+        Log.d(TAG, "subscribeInit: start")
+        val topicList = arrayListOf("Notice", "Event", "Series")
+        if (getAppPref("subInit") != "Y") {
+            Log.d(TAG, "subscribeInit: invoked")
+            fm.subscribeToTopic(topicList[0]).addOnCompleteListener { task0 ->
+                if(task0.isSuccessful) {
+                    Log.d(TAG, "subscribeInit: ${topicList[0]} subscribed")
+                    putAppPref(topicList[0], "Y")
+                    Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[0])}")
+                }
+                fm.subscribeToTopic(topicList[1]).addOnCompleteListener { task1 ->
+                    if(task1.isSuccessful) {
+                        Log.d(TAG, "subscribeInit: ${topicList[1]} subscribed")
+                        putAppPref(topicList[1], "Y")
+                        Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[1])}")
+                    }
+                    fm.subscribeToTopic(topicList[2]).addOnCompleteListener { task2 ->
+                        if(task2.isSuccessful) {
+                            Log.d(TAG, "subscribeInit: ${topicList[2]} subscribed")
+                            putAppPref(topicList[2], "Y")
+                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[2])}")
                         }
-
+                        putAppPref("subInit", "Y")
+                        subTopic = true
+                        Log.d(TAG, "subscribeInit: end")
+                        startMainActivity()
                     }
                 }
-
-                override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
-                    Log.w(TAG, "onFailure: check version error", t)
-                    val builder = AlertDialog.Builder(this@EntryActivity)
-                    builder.setMessage("Confirm to upgrade version?")
-                            .setPositiveButton("Confirm") { _, _ ->
-                                startActivity(
-                                        Intent(
-                                                Intent.ACTION_VIEW,
-                                                Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
-                                        )
-                                )
-                                finish()
-                            }
-                            .show()
-                }
-            })
-
-        } catch (e: Exception) {
-            Log.w(TAG, "checkVersion: check version error", e)
-        }*/
-    }
-
-    private fun checkLogin() {
-        val lt = getAppPref("lt")
-        if (lt != "") {
-            Log.d(TAG, "checkLogin: lt is not empty")
-            try {
-                repo.accountDAO.processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
-                    override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
-                        try {
-                            response.body()?.let { res ->
-                                val head = res.head
-                                if (head.status != "error") {
-                                    val ret = res.body
-                                    putAppPref("lt", ret.t2)
-                                    putAppPref("t", ret.token)
-                                    putAppPref("nick", ret.userinfo.nick)
-                                    putAppPref("accountPKey", ret.userinfo.accountpkey)
-                                    Log.d(TAG, "onResponse: Login Token = ${ret.t2}")
-                                    Log.d(TAG, "onResponse: Access Token = ${ret.token}")
-                                    Log.d(TAG, "onResponse: AccountPKey = ${ret.userinfo.accountpkey}")
-                                } else {
-                                    emptyUserPreference()
-                                    Log.d(TAG, "onResponse: login fail message (${head.msg})")
-                                }
-                            }
-                            checkLogin = true
-                            executeNext()
-                        } catch (e: Exception) {
-                            emptyUserPreference()
-                            Log.w(TAG, "onResponse: error", e)
-                            checkLogin = true
-                            executeNext()
-                        }
-                    }
-
-                    override fun onFailure(call: Call<RetLogin>, t: Throwable) {
-                        Log.w(TAG, "onFailure: error", t)
-                        emptyUserPreference()
-                    }
-                })
-            } catch (e: Exception) {
-                Log.w(TAG, "checkLogin: check login error", e)
-                emptyUserPreference()
-                checkLogin = true
-                executeNext()
             }
         } else {
-            emptyUserPreference()
-            checkLogin = true
-            executeNext()
+            subTopic = true
+            Log.d(TAG, "subscribeInit: end")
+            startMainActivity()
         }
-        Log.d(TAG, "checkLogin: $checkLogin")
     }
 
-    private fun emptyUserPreference() {
-        Log.d(TAG, "emptyUserPreference: empty")
-        putAppPref("lt", "")
+    private fun emptyAccountPreference() {
+        Log.d(TAG, "emptyAccountPreference: empty")
         putAppPref("lt", "")
         putAppPref("t", "")
         putAppPref("nick", "")
         putAppPref("accountPKey", "")
     }
 
-    private fun executeNext() {
-        Log.d(TAG, "executeNext: invoked")
-        Log.d(TAG, "executeNext: n : $networkConnect, v : $checkVersion, l : $checkLogin, d : $updateDeviceId, s: $subTopic")
-        if(networkConnect and checkVersion and checkLogin and updateDeviceId and subTopic) {
+    private fun startMainActivity() {
+        Log.d(TAG, "startMainActivity: invoked")
+        Log.d(
+            TAG,
+            "startMainActivity: n : $networkConnect, v : $checkVersion, l : $checkLogin, d : $updateDeviceId, s: $subTopic"
+        )
+        if (networkConnect and checkVersion and checkLogin and updateDeviceId and subTopic) {
 
             // Branch Set Identity
-            if(getAppPref("accountPKey") != "") {
+            if (getAppPref("accountPKey") != "") {
                 val branch = Branch.getInstance(applicationContext)
                 branch.setIdentity(getAppPref("accountPKey"))
             }
@@ -333,16 +324,17 @@ class EntryActivity : BaseActivity() {
             val intent = Intent(this, MainWebViewActivity::class.java)
             when {
                 link != null -> {
-                    Log.d(TAG, "executeNext: Start intent from FCM")
+                    Log.d(TAG, "startMainActivity: Start intent from FCM")
                     intent.putExtra("link", link)
-                    Log.d(TAG, "executeNext: link = $link")
+                    Log.d(TAG, "startMainActivity: link = $link")
                 }
                 toon != null -> {
-                    Log.d(TAG, "executeNext: Start intent from deep link")
+                    Log.d(TAG, "startMainActivity: Start intent from deep link")
                     intent.putExtra("toon", toon)
-                    Log.d(TAG, "executeNext: toon = $toon")
+                    Log.d(TAG, "startMainActivity: toon = $toon")
                 }
-                else -> {}
+                else -> {
+                }
             }
 
             startActivity(intent)

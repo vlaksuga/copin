@@ -14,6 +14,7 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : ServiceRepo"
+        const val DEFAULT_API_URL = "https://sapi.copincomics.com"
     }
 
     private class AuthInterceptor(
@@ -53,13 +54,13 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
 
 
     val accountDAO: AccountDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", "")!!)
+        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(AccountDAO::class.java)
 
     val payDAO: PayDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", "")!!)
+        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(PayDAO::class.java)

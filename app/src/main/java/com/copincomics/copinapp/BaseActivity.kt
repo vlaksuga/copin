@@ -41,10 +41,6 @@ open class BaseActivity : AppCompatActivity() {
         }
     }
 
-    fun setEntryUrl(url: String) {
-        entryURL = url
-    }
-
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!
     }
@@ -55,10 +51,6 @@ open class BaseActivity : AppCompatActivity() {
 
     fun getCurVersion() : Int {
         return curVersion
-    }
-
-    fun getEntryUrl() : String {
-        return ""
     }
 
 }
