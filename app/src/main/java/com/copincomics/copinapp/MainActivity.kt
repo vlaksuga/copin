@@ -47,8 +47,7 @@ open class MainActivity : BaseWebViewActivity() {
 
         // From Toon:// URI SCHEME
         entryIntent.getStringExtra("toon")?.let { toon ->
-            currentUrl = "${MainWebViewActivity.BASE_URL}?c=toon&k=$toon"
-            Log.d(MainWebViewActivity.TAG, "onCreate: currentUrl = ${MainWebViewActivity.BASE_URL}?c=toon&k=$toon")
+
         } // main
 
         setCookie() // main

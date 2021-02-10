@@ -13,13 +13,15 @@ import com.google.firebase.ktx.Firebase
 open class BaseActivity : AppCompatActivity() {
 
     companion object {
-        const val PREFERENCE_NAME = "com.example.copinwebapp"
+        const val PREFERENCE_NAME = "copincomics"
+        const val curVersion = 11
     }
 
     lateinit var sharedPreferences: SharedPreferences
     lateinit var repo: ServiceRepo
     lateinit var loadingDialog: AlertDialog
     lateinit var firebaseAnalytics: FirebaseAnalytics
+    var entryURL: String = "https://stage.copincomics.com"
 
     fun init() {
         sharedPreferences = applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -39,6 +41,10 @@ open class BaseActivity : AppCompatActivity() {
         }
     }
 
+    fun setEntryUrl(url: String) {
+        entryURL = url
+    }
+
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!
     }
@@ -46,4 +52,13 @@ open class BaseActivity : AppCompatActivity() {
     fun showToast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
+
+    fun getCurVersion() : Int {
+        return curVersion
+    }
+
+    fun getEntryUrl() : String {
+        return ""
+    }
+
 }

@@ -1,5 +1,6 @@
 package com.copincomics.copinapp
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
@@ -44,7 +45,6 @@ open class MainWebViewActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : MainWebView"
-        const val BASE_URL = "https://stage.copincomics.com/?dd" // base*
         const val GOOGLE_SIGN_IN = 9001 // account
     }
 
@@ -73,7 +73,7 @@ open class MainWebViewActivity : BaseActivity() {
     var selectedRevenue: Double? = null
 
     lateinit var webView: WebView // base
-    var currentUrl: String = BASE_URL // base
+    var currentUrl: String = entryURL // base
     var t: String? = null
 
 
@@ -91,6 +91,10 @@ open class MainWebViewActivity : BaseActivity() {
         t = getAppPref("t")
         Log.d(TAG, "onCreate: t = $t")
 
+        // Get Entry URL
+        entryURL = getAppPref("e")
+        currentUrl = entryURL
+
         // Get Subscribe Topic
         subTopicEvent = getAppPref("Event")
         subTopicSeries = getAppPref("Series")
@@ -107,8 +111,8 @@ open class MainWebViewActivity : BaseActivity() {
 
         // From Toon:// URI SCHEME
         entryIntent.getStringExtra("toon")?.let { toon ->
-            currentUrl = "$BASE_URL?c=toon&k=$toon"
-            Log.d(TAG, "onCreate: currentUrl = $BASE_URL?c=toon&k=$toon")
+            currentUrl = "$entryURL?c=toon&k=$toon"
+            Log.d(TAG, "onCreate: currentUrl = $entryURL?c=toon&k=$toon")
         } // main
 
         // dummy buttons
@@ -124,12 +128,7 @@ open class MainWebViewActivity : BaseActivity() {
         // test listeners for test
         fabGoogle.setOnClickListener { branchEventPurchaseCoin(1.5) } // main
         fabTwitter.setOnClickListener {
-            toggleSubTopic("Event")
-            if(getAppPref("Event") == "Y") {
-                fabTwitter.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF8800"))
-            } else {
-                fabTwitter.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#333333"))
-            }
+            firebaseEventPurchaseCoin(1.99)
         }
         fabFacebook.setOnClickListener {
             toggleSubTopic("Series")
@@ -139,21 +138,7 @@ open class MainWebViewActivity : BaseActivity() {
                 fabFacebook.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#333333"))
             }
         }
-
-        // fabInit Color
-        if(getAppPref("Event") == "Y") {
-            fabTwitter.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF8800"))
-        } else {
-            fabTwitter.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#333333"))
-        }
-
-        if(getAppPref("Series") == "Y") {
-            fabFacebook.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF8800"))
-        } else {
-            fabFacebook.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#333333"))
-        }
-
-        fabApple.setOnClickListener { firebaseCustomEvent("bundle_test", "{'title':'testTitle', 'body':'testBody'}") }
+        fabEmail.setOnClickListener { firebaseEventSpendCoin("111", "coin", 2.toDouble()) }
 
 
 
@@ -247,6 +232,10 @@ open class MainWebViewActivity : BaseActivity() {
         setCookie() // main
         accountPKey = getAppPref("accountPKey") // base
         Log.d(TAG, "onCreate: accountPKey = $accountPKey")
+    }
+
+    override fun onStart() {
+        super.onStart()
         webView.loadUrl(currentUrl) // Each
     }
 
@@ -364,17 +353,20 @@ open class MainWebViewActivity : BaseActivity() {
                                 ) {
                                     if (response.body()?.head?.status != "error") {
                                         Log.d(TAG, "onResponse: success")
-                                        Log.d(TAG, "onResponse: ret = ${response.body()!!.body}")
+                                        response.body()?.let {
+                                            val ret = it.body
+                                            putAppPref("lt", ret.t2)
+                                            putAppPref("t", ret.token)
+                                            putAppPref("accountPKey", ret.userinfo.accountpkey)
 
-                                        // Set Identity For Branch
-                                        accountPKey =
-                                            response.body()?.body?.userinfo?.accountpkey ?: ""
-                                        if(accountPKey != "") {
-                                            val branch = Branch.getInstance(applicationContext)
-                                            branch.setIdentity(accountPKey)
-                                            Log.d(TAG, "onResponse: accountPKey = $accountPKey")
+                                            // Set Identity For Branch
+                                            accountPKey = ret.userinfo.accountpkey
+                                            if(accountPKey != "") {
+                                                val branch = Branch.getInstance(applicationContext)
+                                                branch.setIdentity(accountPKey)
+                                                Log.d(TAG, "onResponse: accountPKey = $accountPKey")
+                                            }
                                         }
-
                                         loadingDialog.dismiss()
                                         webView.loadUrl("javascript:loginWithFirebase('$idToken')")
                                     } else {
@@ -403,7 +395,7 @@ open class MainWebViewActivity : BaseActivity() {
         }
     } // account
 
-    private fun restartToBaseUrl() { webView.loadUrl(BASE_URL) } // base
+    private fun restartToBaseUrl() { webView.loadUrl(entryURL!!) } // base
 
     fun googleSignIn() {
         Log.d(TAG, "googleSignIn: invoked")
@@ -467,12 +459,42 @@ open class MainWebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
+
         repo.payDAO.confirm(purchaseToken, sku, t!!).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
-                        billingAgent.consumePurchase(purchaseToken)
                         Log.d(TAG, "onResponse: BackEnd Says OK")
+                        billingAgent.consumePurchase(purchaseToken)
+                    } else {
+                        Log.d(TAG, "onResponse: BackEnd Says Not OK")
+                    }
+                    webView.loadUrl("javascript:payDone()")
+                    selectedRevenue?.let { rev ->
+                        branchEventPurchaseCoin(rev)
+                        firebaseEventPurchaseCoin(rev)
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<Confirm>, t: Throwable) {
+                selectedRevenue?.let { rev ->
+                    branchEventPurchaseCoin(rev)
+                    firebaseEventPurchaseCoin(rev)
+                }
+                Log.e(TAG, "onFailure: Confirm from backend fail", t)
+            }
+        })
+    } // pay
+
+    fun sendBackEndForCheckUnconsumed(purchaseToken: String, sku: String) {
+        Log.d(TAG, "sendBackEndForCheckUnconsumed: invoked")
+        repo.payDAO.confirm(purchaseToken, sku, t!!).enqueue(object : Callback<Confirm> {
+            override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
+                response.body()?.let { res ->
+                    if (res.body.result == "OK") {
+                        Log.d(TAG, "onResponse: BackEnd Says OK")
+                        billingAgent.consumePurchase(purchaseToken)
                     } else {
                         Log.d(TAG, "onResponse: BackEnd Says Not OK")
                     }
@@ -491,6 +513,7 @@ open class MainWebViewActivity : BaseActivity() {
                 .setCurrency(CurrencyType.USD)
                 .setRevenue(revenue)
                 .setDescription("Purchase Coin")
+
                 .logEvent(this)
     } // pay
 
@@ -498,16 +521,16 @@ open class MainWebViewActivity : BaseActivity() {
         Log.d(TAG, "firebaseCustomEvent: invoked")
         val j = JSONObject(params)
         firebaseAnalytics.logEvent(eventName, bundleParams(j))
-    }
+    } // log
 
-    fun firebaseEventSpendCoin(episodeId: String, kind: String, value: Double) {
+    private fun firebaseEventSpendCoin(episodeId: String, kind: String, value: Double) {
         Log.d(TAG, "firebaseEventSpendCoin: invoked")
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SPEND_VIRTUAL_CURRENCY) {
             param(FirebaseAnalytics.Param.ITEM_NAME, episodeId)
             param(FirebaseAnalytics.Param.VIRTUAL_CURRENCY_NAME, kind)
             param(FirebaseAnalytics.Param.VALUE, value)
         }
-    }
+    } // log
 
     fun firebaseEventPurchaseCoin(revenue: Double) {
         Log.d(TAG, "firebaseEventPurchase: invoked")
@@ -515,6 +538,8 @@ open class MainWebViewActivity : BaseActivity() {
             param(FirebaseAnalytics.Param.CURRENCY, "USD")
             param(FirebaseAnalytics.Param.AFFILIATION, "Google Store")
             param(FirebaseAnalytics.Param.VALUE, revenue)
+            param(FirebaseAnalytics.Param.ITEMS, "coinTest")
+            param(FirebaseAnalytics.Param.PRICE, revenue)
         }
     }
 
@@ -593,7 +618,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     override fun onBackPressed() {
         when {
-            currentUrl == BASE_URL -> {
+            currentUrl == entryURL -> {
                 val builder = AlertDialog.Builder(this, R.style.AlertDialogCustom)
                 builder.apply {
                     setMessage("Do you really want to quit?")

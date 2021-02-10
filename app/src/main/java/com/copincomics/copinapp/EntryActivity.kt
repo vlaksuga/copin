@@ -36,13 +36,16 @@ class EntryActivity : BaseActivity() {
     var checkVersion = false
     var checkLogin = false
     var updateDeviceId = false
+    var subTopic = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate: start")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
-
         init()
+        putAppPref("a", "https://sapi.copincomics.com")
+
 
         /* INTENT EXTRA */
         val intent = intent
@@ -50,12 +53,19 @@ class EntryActivity : BaseActivity() {
             link = it.getString("link") // intent from FCM
             toon = it.getString("toon") // intent from deep link
             Log.d(TAG, "intent extra link = $link")
+            Log.d(TAG, "intent extra toon = $toon")
         }
+
 
         /* CHECK NETWORK CONNECTION */
         if (networkConnection(this)) {
             networkConnect = true
+            checkVersion()
+            checkLogin()
+            updateDeviceId()
+            subscribeInit()
         } else {
+            Log.d(TAG, "onCreate: network error ")
             val builder = AlertDialog.Builder(this)
             builder.setMessage("Network Error")
             builder.setPositiveButton("Confirm") { _, _ -> finish() }
@@ -63,68 +73,12 @@ class EntryActivity : BaseActivity() {
             builder.show()
         }
 
-        /* UPDATE DEVICE ID */
-        updateDeviceId = updateDeviceId()
-
-        /* CREATE NOTIFICATION CHANNELS */
-        createNotificationChannels()
-
-        /* SUBSCRIBE TO TOPIC */
-        if(getAppPref("subInit") != "Y") {
-            subscribeInit()
-            Log.d(TAG, "onCreate: subscribeInit invoked")
-        }
-
-
-    }
-
-    private fun subscribeInit() {
-        Log.d(TAG, "subscribeInit: invoked")
-        fm.subscribeToTopic("Notice")
-                .addOnCompleteListener {
-                    if(it.isSuccessful) {
-                        Log.d(TAG, "subscribeInit: notice")
-                        putAppPref("Notice", "Y")
-                        Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Notice")} ")
-                    }
-                }
-
-        fm.subscribeToTopic("Event")
-                .addOnCompleteListener {
-                    if(it.isSuccessful) {
-                        Log.d(TAG, "subscribeInit: event")
-                        putAppPref("Event", "Y")
-                        Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Event")} ")
-                    }
-                }
-
-        fm.subscribeToTopic("Series")
-                .addOnCompleteListener {
-                    if(it.isSuccessful) {
-                        Log.d(TAG, "subscribeInit: series")
-                        putAppPref("Series", "Y")
-                        Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Series")} ")
-                    }
-                }
-        putAppPref("subInit", "Y")
-    }
-
-    override fun onResume() {
-        Log.d(TAG, "onResume: start")
-        super.onResume()
-
-        /* CHECK LOGIN */
-        checkLogin = checkLogin()
-
-        /* CHECK APP VERSION */
-        checkVersion = checkVersion()
     }
 
     override fun onStart() {
         super.onStart()
         try {
             Branch.enableLogging()
-            /*Branch.enableTestMode()*/ // For Test Mode
             IntegrationValidator.validate(this)
             Branch.sessionBuilder(this)
                     .withCallback { referringParams, _ -> Log.d(TAG, "Branch Session Builder: $referringParams")}
@@ -135,6 +89,44 @@ class EntryActivity : BaseActivity() {
         }
     }
 
+    private fun subscribeInit() {
+        Log.d(TAG, "subscribeInit: invoked")
+        if(getAppPref("subInit") != "Y") {
+            Log.d(TAG, "subscribeInit: invoked")
+            fm.subscribeToTopic("Notice")
+                    .addOnCompleteListener {
+                        if(it.isSuccessful) {
+                            Log.d(TAG, "subscribeInit: notice")
+                            putAppPref("Notice", "Y")
+                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Notice")} ")
+                        }
+                    }
+
+            fm.subscribeToTopic("Event")
+                    .addOnCompleteListener {
+                        if(it.isSuccessful) {
+                            Log.d(TAG, "subscribeInit: event")
+                            putAppPref("Event", "Y")
+                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Event")} ")
+                        }
+                    }
+
+            fm.subscribeToTopic("Series")
+                    .addOnCompleteListener {
+                        if(it.isSuccessful) {
+                            Log.d(TAG, "subscribeInit: series")
+                            putAppPref("Series", "Y")
+                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref("Series")} ")
+                        }
+                    }
+            putAppPref("subInit", "Y")
+            subTopic = true
+            executeNext()
+        }
+        subTopic = true
+        executeNext()
+    }
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         try {
@@ -143,14 +135,6 @@ class EntryActivity : BaseActivity() {
         } catch (e: Exception) {
             Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
         }
-    }
-
-    private fun createNotificationChannels() {
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val commonChannelId = applicationContext.getString(R.string.default_notification_channel_id)
-        val commonChannel = NotificationChannel(commonChannelId, commonChannelId, NotificationManager.IMPORTANCE_HIGH)
-        notificationManager.createNotificationChannel(commonChannel)
-        Log.d(TAG, "createNotificationChannel: Created")
     }
 
     private fun networkConnection(activity: AppCompatActivity): Boolean {
@@ -170,90 +154,110 @@ class EntryActivity : BaseActivity() {
         return result
     }
 
-    private fun updateDeviceId(): Boolean {
+    private fun updateDeviceId() {
         val fcm = FirebaseMessaging.getInstance()
         fcm.token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 task.result?.let {
                     putAppPref("deviceId", it)
                     Log.d(TAG, "updateDeviceId: firebase instance id : $it")
-                    Log.d(TAG, "updateDeviceId: ${getAppPref("deviceId")}")
+                    Log.d(TAG, "updateDeviceId: in pref ${getAppPref("deviceId")}")
                 }
             } else {
                 putAppPref("deviceId", "fail_to_get_FCM_instance_token")
                 Log.d(TAG, "updateDeviceId: firebase instance id : Fail")
+
             }
+            updateDeviceId = true
+            executeNext()
         }
-        fcm.isAutoInitEnabled = false
-        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(true)
-        return true
     }
 
-    private fun checkVersion(): Boolean {
-
-        try {
+    private fun checkVersion() {
+        val body = repo.accountDAO.requestCheckVersion().execute().body()
+        Log.d(TAG, "execute: body = $body")
+/*        try {
             repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
                 override fun onResponse(
-                    call: Call<CheckVersion>,
-                    response: Response<CheckVersion>
+                        call: Call<CheckVersion>,
+                        response: Response<CheckVersion>
                 ) {
                     response.body()?.let { res ->
                         val minVersion = res.body.ANDROIDMIN.toInt()
-                        val curVersion = currentVersion()
-                        if (curVersion >= minVersion) {
-                            Log.d(TAG, "onResponse: minVersion : $minVersion")
-                            Log.d(TAG, "onResponse: curVersion : $curVersion")
-                            executeNext()
-                        } else {
+                        val recentVersion = res.body.ANDROIDRECENT.toInt()
+                        val apiURL11: String? = res.body.APIURL11
+                        val entryURL11: String? = res.body.ENTRYURL11
+                        val defaultEntryURL = res.body.DEFAULTENTRYURL
+                        val defaultApiURL = res.body.DEFAULTAPIURL
+                        Log.d(TAG, "onResponse: curVersion : $curVersion")
+                        Log.d(TAG, "onResponse: recentVersion : $recentVersion")
+                        if (curVersion < minVersion) {
                             val builder = AlertDialog.Builder(this@EntryActivity)
                             builder.setMessage("Confirm to upgrade version?")
-                                .setPositiveButton("Confirm") { _, _ ->
-                                    startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
+                                    .setPositiveButton("Confirm") { _, _ ->
+                                        startActivity(
+                                                Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
+                                                )
                                         )
-                                    )
-                                    finish()
+                                        finish()
+                                    }
+                                    .show()
+                        } else {
+                            Log.d(TAG, "onResponse: No need to update app")
+                            if (curVersion >= recentVersion) {
+                                Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
+                                Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
+                                putAppPref("e", defaultEntryURL)
+                                putAppPref("a", defaultApiURL)
+
+                                if (entryURL11 != null) {
+                                    putAppPref("e", entryURL11)
                                 }
-                                .setNegativeButton("Ignore") { dialog , _ ->
-                                    dialog.dismiss()
-                                    executeNext()
+
+                                if (apiURL11 != null) {
+                                    putAppPref("a", apiURL11)
+                                } else {
+                                    Log.d(TAG, "onResponse: defaultEntry")
                                 }
-                                .show()
+
+                            } else {
+                                putAppPref("e", defaultEntryURL)
+                                putAppPref("a", defaultApiURL)
+                                Log.d(TAG, "onResponse: defaultEntryURL = $defaultEntryURL")
+                                Log.d(TAG, "onResponse: defaultApiURL = $defaultApiURL")
+                                Log.d(TAG, "onResponse: recentVersion adapted")
+
+                            }
                         }
+
                     }
                 }
 
                 override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
                     Log.w(TAG, "onFailure: check version error", t)
+                    val builder = AlertDialog.Builder(this@EntryActivity)
+                    builder.setMessage("Confirm to upgrade version?")
+                            .setPositiveButton("Confirm") { _, _ ->
+                                startActivity(
+                                        Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
+                                        )
+                                )
+                                finish()
+                            }
+                            .show()
                 }
             })
+
         } catch (e: Exception) {
             Log.w(TAG, "checkVersion: check version error", e)
-        }
-        return true
+        }*/
     }
 
-    private fun currentVersion(): Int {
-        var version = 99
-        var packageInfo: PackageInfo? = null
-        try {
-            packageInfo =
-                applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
-            packageInfo?.let {
-                val versionName = it.versionName
-                version = it.versionCode
-                putAppPref("appVersion_view", versionName)
-                putAppPref("appVersion", version.toString())
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "packageInfo error", e)
-        }
-        return version
-    }
-
-    private fun checkLogin(): Boolean {
+    private fun checkLogin() {
         val lt = getAppPref("lt")
         if (lt != "") {
             Log.d(TAG, "checkLogin: lt is not empty")
@@ -276,33 +280,34 @@ class EntryActivity : BaseActivity() {
                                     emptyUserPreference()
                                     Log.d(TAG, "onResponse: login fail message (${head.msg})")
                                 }
-
                             }
-
+                            checkLogin = true
+                            executeNext()
                         } catch (e: Exception) {
                             emptyUserPreference()
                             Log.w(TAG, "onResponse: error", e)
+                            checkLogin = true
+                            executeNext()
                         }
-                        executeNext()
                     }
 
                     override fun onFailure(call: Call<RetLogin>, t: Throwable) {
                         Log.w(TAG, "onFailure: error", t)
                         emptyUserPreference()
-                        executeNext()
                     }
                 })
             } catch (e: Exception) {
                 Log.w(TAG, "checkLogin: check login error", e)
                 emptyUserPreference()
+                checkLogin = true
                 executeNext()
             }
         } else {
             emptyUserPreference()
+            checkLogin = true
             executeNext()
         }
         Log.d(TAG, "checkLogin: $checkLogin")
-        return true
     }
 
     private fun emptyUserPreference() {
@@ -315,8 +320,9 @@ class EntryActivity : BaseActivity() {
     }
 
     private fun executeNext() {
-        Log.d(TAG, "executeNext: n : $networkConnect, v : $checkVersion, l : $checkLogin, d : $updateDeviceId ")
-        if(networkConnect and checkVersion and checkLogin and updateDeviceId) {
+        Log.d(TAG, "executeNext: invoked")
+        Log.d(TAG, "executeNext: n : $networkConnect, v : $checkVersion, l : $checkLogin, d : $updateDeviceId, s: $subTopic")
+        if(networkConnect and checkVersion and checkLogin and updateDeviceId and subTopic) {
 
             // Branch Set Identity
             if(getAppPref("accountPKey") != "") {
@@ -338,6 +344,7 @@ class EntryActivity : BaseActivity() {
                 }
                 else -> {}
             }
+
             startActivity(intent)
             finish()
         }

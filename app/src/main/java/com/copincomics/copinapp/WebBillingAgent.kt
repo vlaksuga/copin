@@ -30,32 +30,25 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     override fun onPurchasesUpdated(result: BillingResult, purchaseList: MutableList<Purchase>?) {
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                // TODO : SEND SERVER OK RESPONSE FOR COMPLETE COVER VIEW
-                /*activity.webView.loadUrl("javascript:purchaseCompleted()")*/ //
-                activity.selectedRevenue?.let { rev ->
-                    activity.branchEventPurchaseCoin(rev)
-                    activity.firebaseEventPurchaseCoin(rev)
+                if (purchaseList != null) {
+                    if(purchaseList.size > 0) {
+                        activity.sendBackEnd(purchaseList[0].purchaseToken, purchaseList[0].sku)
+                        Log.d(TAG, "onPurchasesUpdated: Purchase = $purchaseList[0]")
+                    }
                 }
-                purchaseList?.let { list ->
+
+                /*purchaseList?.let { list ->
                     for (purchase in list) {
                         activity.sendBackEnd(purchase.purchaseToken, purchase.sku)
                         Log.d(TAG, "onPurchasesUpdated: List = $list")
                     }
-                }
-
-            }
-            BillingClient.BillingResponseCode.USER_CANCELED -> {
-                Log.d(TAG, "onPurchasesUpdated: USER CANCELED")
-            }
-            BillingClient.BillingResponseCode.SERVICE_TIMEOUT -> {
-                Log.d(TAG, "onPurchasesUpdated: SERVICE TIMEOUT")
+                }*/
             }
             else -> {
+                Log.d(TAG, "onPurchasesUpdated: CANCELED")
             }
         }
     }
-
-
 
     fun consumePurchase(purchaseToken: String) {
         val consumeParams = ConsumeParams.newBuilder()
@@ -142,7 +135,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         if (purchaseList != null) {
             Log.d(PayActivity.TAG, "checkProductUnconsumed: ${purchaseList.size} unconsumed items")
             for (purchase in purchaseList) {
-                activity.sendBackEnd(purchase.purchaseToken, purchase.sku)
+                activity.sendBackEndForCheckUnconsumed(purchase.purchaseToken, purchase.sku)
             }
         } else {
             Log.d(PayActivity.TAG, "checkProductUnconsumed: No unconsumed item")

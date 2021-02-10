@@ -27,13 +27,10 @@ class MyFirebaseMessageService : FirebaseMessagingService() {
         Log.d(TAG, "onMessageReceived: data = ${msg.rawData} ")
 
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        var channelId = getString(R.string.default_notification_channel_id)
-        val receivedChannelId = msg.notification?.channelId
-
-        if (receivedChannelId == getString(R.string.event_notification_channel_id) || receivedChannelId == getString(R.string.series_updates_notification_channel_id)) {
-            channelId = receivedChannelId
-        }
+        val channelId = getString(R.string.default_notification_channel_id)
+        val commonChannel = NotificationChannel(channelId, channelId, NotificationManager.IMPORTANCE_HIGH)
+        notificationManager.createNotificationChannel(commonChannel)
+        Log.d(EntryActivity.TAG, "createNotificationChannel: Created")
 
         val intent = Intent(applicationContext, EntryActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)

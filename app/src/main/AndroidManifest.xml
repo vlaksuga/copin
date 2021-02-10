@@ -35,6 +35,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="officialcopincomics.app.link" />
+                <data android:scheme="https" android:host="officialcopincomics-alternate.app.link" />
+            </intent-filter>
         </activity>
         <activity android:name=".MainWebViewActivity" />
         <activity android:name=".BaseWebViewActivity"/>
@@ -64,7 +71,7 @@
             android:value="false" />
         <meta-data
             android:name="firebase_analytics_collection_enabled"
-            android:value="false" />
+            android:value="true" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/orange" />
