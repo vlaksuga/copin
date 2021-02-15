@@ -94,6 +94,8 @@ open class MainWebViewActivity : BaseActivity() {
         // Get Entry URL
         entryURL = getAppPref("e")
         currentUrl = entryURL
+        Log.d(TAG, "onCreate: entryURl = $entryURL")
+        Log.d(TAG, "onCreate: currentUrl = $currentUrl")
 
         // Get Subscribe Topic
         subTopicEvent = getAppPref("Event")

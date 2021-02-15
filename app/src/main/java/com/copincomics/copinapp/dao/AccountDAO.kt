@@ -8,7 +8,7 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface AccountDAO {
-    @GET("a/checkVersion.*")
+    @GET("a/checkVersion.json")
     fun requestCheckVersion(
     ): Call<CheckVersion>
 
