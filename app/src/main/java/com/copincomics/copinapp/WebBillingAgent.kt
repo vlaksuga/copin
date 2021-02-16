@@ -17,6 +17,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     private val bonusList = arrayListOf("0", "10", "35", "200", "440")
     private val coinList = arrayListOf("10", "30", "100", "500", "1000")
     private val bestTagList = arrayListOf("", "", "", "Y", "")
+    private var jsonData : JSONArray? = null
     var dataSorted = listOf<SkuDetails>()
 
     private lateinit var billingClient: BillingClient
@@ -78,25 +79,28 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                 Log.d(TAG, "queryInventoryAsync: Response Code is OK")
                 if(!list.isNullOrEmpty()) {
                     list.let { skuDetails ->
-                        productDetailList = skuDetails
-                        dataSorted = productDetailList!!.sortedBy { it.priceAmountMicros }
-                        Log.d(TAG, "queryInventoryAsync: dataSorted = $dataSorted")
 
-                        // DRAW LIST WITH SKU DETAILS // todo : 여러번 안걸리게 하기
-                        val theList = arrayListOf<HashMap<String, String>>()
-                        for((index, data) in dataSorted.withIndex()) {
-                            val map : HashMap<String, String> = hashMapOf()
-                            map["pid"] = data.sku
-                            map["a"] = data.price
-                            map["b"] = bonusList[index]
-                            map["off"] = ""
-                            map["c"] = coinList[index]
-                            map["best"] = bestTagList[index]
-                            theList.add(map)
-                            Log.d(TAG, "queryInventoryAsync: map $map added")
+                        // CHECK jsonData in null
+                        if(jsonData == null) {
+                            Log.d(TAG, "queryInventoryAsync: jsonData is null")
+                            productDetailList = skuDetails
+                            dataSorted = productDetailList!!.sortedBy { it.priceAmountMicros }
+                            Log.d(TAG, "queryInventoryAsync: dataSorted = $dataSorted")
+                            val theList = arrayListOf<HashMap<String, String>>()
+                            for((index, data) in dataSorted.withIndex()) {
+                                val map : HashMap<String, String> = hashMapOf()
+                                map["pid"] = data.sku
+                                map["a"] = data.price
+                                map["b"] = bonusList[index]
+                                map["off"] = ""
+                                map["c"] = coinList[index]
+                                map["best"] = bestTagList[index]
+                                theList.add(map)
+                                Log.d(TAG, "queryInventoryAsync: map $map added")
+                            }
+                            jsonData = JSONArray(theList)
                         }
 
-                        val jsonData = JSONArray(theList)
                         activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')")  }
                         Log.d(TAG, "setDataTt: setData = $jsonData")
                         Log.d(TAG, "queryInventoryAsync: Completed")

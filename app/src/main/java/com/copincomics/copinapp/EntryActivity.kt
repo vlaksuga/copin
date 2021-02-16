@@ -59,6 +59,7 @@ class EntryActivity : BaseActivity() {
             Log.d(TAG, "networkConnection: end")
             networkConnect = true
             checkVersion()
+            subscribeInit()
         } else {
             Log.d(TAG, "onCreate: network error")
             val builder = AlertDialog.Builder(this)
@@ -221,7 +222,7 @@ class EntryActivity : BaseActivity() {
         }
     }
 
-    private fun updateDeviceId() { // TODO : 이거 끝나면 메인 액티비티 실행하기
+    private fun updateDeviceId() {
         Log.d(TAG, "updateDeviceId: start")
         val fcm = FirebaseMessaging.getInstance()
         fcm.token.addOnCompleteListener { task ->
@@ -232,18 +233,18 @@ class EntryActivity : BaseActivity() {
                     Log.d(TAG, "updateDeviceId: in pref ${getAppPref("deviceId")}")
                     updateDeviceId = true
                     Log.d(TAG, "updateDeviceId: end")
-                    subscribeInit()
+                    startMainActivity()
                 }
             } else {
                 Log.d(TAG, "updateDeviceId: firebase instance id : Fail")
                 updateDeviceId = true
                 Log.d(TAG, "updateDeviceId: end")
-                subscribeInit()
+                startMainActivity()
             }
         }
     }
 
-    private fun subscribeInit() { // TODO : 독립적으로 옮기기
+    private fun subscribeInit() {
         Log.d(TAG, "subscribeInit: start")
         if (getAppPref("subInit") != "Y") {
             Log.d(TAG, "subscribeInit: invoked")
