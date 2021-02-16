@@ -9,7 +9,6 @@ interface PayDAO {
     @GET("paymentAndroid/confirm.json")
     fun confirm(
         @Query("purchasetoken") purchasetoken: String,
-        @Query("productid") productid: String,
-        @Query("t") t: String,
+        @Query("productid") productid: String
     ): Call<Confirm>
 }

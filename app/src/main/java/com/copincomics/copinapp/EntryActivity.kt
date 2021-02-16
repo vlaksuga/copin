@@ -24,15 +24,15 @@ class EntryActivity : BaseActivity() {
         const val TAG = "TAG : Entry"
     }
 
-    var link: String? = null
-    var toon: String? = null
+    private var link: String? = null
+    private var toon: String? = null
 
     private var networkConnect = false
     private val fm = FirebaseMessaging.getInstance()
-    var checkVersion = false
-    var checkLogin = false
-    var updateDeviceId = false
-    var subTopic = false
+    private var checkVersion = false
+    private var checkLogin = false
+    private var updateDeviceId = false
+    private var subTopic = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,8 +54,8 @@ class EntryActivity : BaseActivity() {
 
 
         /* CHECK NETWORK CONNECTION */
-        Log.d(TAG, "networkConnection: start ")
-        if (networkConnection(this)) {
+        Log.d(TAG, "networkConnection: start")
+        if (networkConnection()) {
             Log.d(TAG, "networkConnection: end")
             networkConnect = true
             checkVersion()
@@ -94,13 +94,11 @@ class EntryActivity : BaseActivity() {
         }
     }
 
-    private fun networkConnection(activity: AppCompatActivity): Boolean {
+    private fun networkConnection(): Boolean {
         val result: Boolean
-        val connectivityManager =
-                activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager = getSystemService(ConnectivityManager::class.java)
         val networkCapabilities = connectivityManager.activeNetwork ?: return false
-        val activeNetwork =
-                connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
         result = when {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
@@ -119,8 +117,8 @@ class EntryActivity : BaseActivity() {
                     response: Response<CheckVersion>
             ) {
                 response.body()?.let { res ->
-                    val minVersion = res.body.ANDROIDMIN.toInt()
-                    val recentVersion = res.body.ANDROIDRECENT.toInt()
+                    val minVersion = res.body.ANDROIDMIN.toInt() // TODO : INT 변환 실패시
+                    val recentVersion = res.body.ANDROIDRECENT.toInt() // TODO : INT 변환 실패시
                     val apiURL11: String = res.body.APIURL11
                     val entryURL11: String = res.body.ENTRYURL11
                     val defaultEntryURL = res.body.DEFAULTENTRYURL
@@ -138,20 +136,20 @@ class EntryActivity : BaseActivity() {
                                                     Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
                                             )
                                     )
-                                    finish()
+                                    finish() // TODO : 깔끔하지 않음
                                 }
                                 .show()
                     } else {
                         Log.d(TAG, "onResponse: No need to update app")
-                        putAppPref("e", defaultEntryURL)
+                        putAppPref("e", defaultEntryURL) // TODO : 락걸림 관련 찾아보기
                         putAppPref("a", defaultApiURL)
-                        if (curVersion >= recentVersion) {
+                        if (curVersion > recentVersion) {
                             Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
                             Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
                             if (entryURL11.isNotBlank() and entryURL11.isNotEmpty()) {
                                 putAppPref("e", entryURL11)
                             }
-                            if (apiURL11.isNotBlank() and entryURL11.isNotEmpty()) {
+                            if (apiURL11.isNotBlank() and apiURL11.isNotEmpty()) {
                                 putAppPref("a", apiURL11)
                             } else {
                                 Log.d(TAG, "onResponse: apiurl is empty or blank ")
@@ -223,7 +221,7 @@ class EntryActivity : BaseActivity() {
         }
     }
 
-    private fun updateDeviceId() {
+    private fun updateDeviceId() { // TODO : 이거 끝나면 메인 액티비티 실행하기
         Log.d(TAG, "updateDeviceId: start")
         val fcm = FirebaseMessaging.getInstance()
         fcm.token.addOnCompleteListener { task ->
@@ -245,7 +243,7 @@ class EntryActivity : BaseActivity() {
         }
     }
 
-    private fun subscribeInit() {
+    private fun subscribeInit() { // TODO : 독립적으로 옮기기
         Log.d(TAG, "subscribeInit: start")
         if (getAppPref("subInit") != "Y") {
             Log.d(TAG, "subscribeInit: invoked")
@@ -279,6 +277,7 @@ class EntryActivity : BaseActivity() {
                     }
         } else {
             Log.d(TAG, "subscribeInit: end")
+            Log.d(TAG, "subscribeInit: no need to init")
             subTopic = true
             startMainActivity()
         }
@@ -291,6 +290,7 @@ class EntryActivity : BaseActivity() {
         if (getAppPref("accountPKey") != "") {
             val branch = Branch.getInstance(applicationContext)
             branch.setIdentity(getAppPref("accountPKey"))
+            Log.d(TAG, "startMainActivity: branch Set Identity")
         }
         val intent = Intent(this, MainWebViewActivity::class.java)
         when {

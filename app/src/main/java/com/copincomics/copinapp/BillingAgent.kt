@@ -54,7 +54,7 @@ class BillingAgent(private val activity: PayActivity) : PurchasesUpdatedListener
     }
 
     private fun sendBackEnd(purchaseToken: String, sku: String) {
-        BaseActivity().repo.payDAO.confirm(purchaseToken, sku, "t").enqueue(object : Callback<Confirm> {
+        BaseActivity().repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
