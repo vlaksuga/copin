@@ -18,8 +18,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
-        <activity android:name=".WebPayActivity"/>
-        <activity android:name=".PayActivity" />
         <activity android:name=".EntryActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -43,10 +41,6 @@
             </intent-filter>
         </activity>
         <activity android:name=".MainWebViewActivity" />
-        <activity android:name=".BaseWebViewActivity"/>
-        <activity android:name=".MainActivity"/>
-        <activity android:name=".AccountWebViewActivity"/>
-        <activity android:name=".PayWebViewActivity"/>
 
         <service
             android:name=".MyFirebaseMessageService"

@@ -1,6 +1,5 @@
 package com.copincomics.copinapp
 
-import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
@@ -12,6 +11,7 @@ import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.android.billingclient.api.*
+import com.copincomics.copinapp.data.CoinItem
 import com.copincomics.copinapp.data.Confirm
 import com.copincomics.copinapp.data.RetLogin
 import com.facebook.CallbackManager
@@ -19,7 +19,6 @@ import com.facebook.FacebookCallback
 import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
-import com.firebase.ui.auth.AuthUI
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -40,7 +39,6 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import kotlin.reflect.typeOf
 
 open class MainWebViewActivity : BaseActivity() {
 
@@ -71,7 +69,7 @@ open class MainWebViewActivity : BaseActivity() {
     // Billing Service // pay
     private val billingAgent = WebBillingAgent(this)
     lateinit var accountPKey: String
-    var selectedRevenue: Double? = null
+    var selectedItem: CoinItem? = null
 
 
     lateinit var webView: WebView // base
@@ -127,20 +125,11 @@ open class MainWebViewActivity : BaseActivity() {
         fabPay = findViewById(R.id.purchase_btn) // main
         fabEmailSignUp = findViewById(R.id.email_sign_up_btn) // main
 
-        // test listeners for test
-        fabGoogle.setOnClickListener { branchEventPurchaseCoin(1.5) } // main
-        fabTwitter.setOnClickListener {
-            firebaseEventShare("test111")
-        }
+
         fabFacebook.setOnClickListener {
-            toggleSubTopic("Series")
-            if (getAppPref("Series") == "Y") {
-                fabFacebook.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF8800"))
-            } else {
-                fabFacebook.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#333333"))
-            }
+            firebaseEventSpendCoin("test114","coin", "2")
+            branchCustomEvent("SPEND_VIRTUAL_CURRENCY", "{'item_name':'test114','currency':'coin','value':'2'}")
         }
-        fabEmail.setOnClickListener { firebaseEventSpendCoin("111", "coin", 2.toDouble()) }
 
 
         // webView settings // base
@@ -153,13 +142,20 @@ open class MainWebViewActivity : BaseActivity() {
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess = true
         webView.webViewClient = object : WebViewClient() {
-            var flag = true
-
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                if(currentUrl.contains("m=payment") && url?.contains("m_ps.html") == false) {
+                   billingAgent.endBillingConnection()
+                }
+
+                if(url?.contains("m=setting") == true) {
+                    Log.d(TAG, "onPageStarted: this is setting page")
+                    onSettingPageStart()
+                }
 
                 loadingDialog.show()
                 Log.d(TAG, "onPageStarted: invoked")
+
                 currentUrl = url.toString()
                 Log.d(TAG, "urlHistory: currentUrl = $currentUrl")
             }
@@ -182,17 +178,9 @@ open class MainWebViewActivity : BaseActivity() {
                 return false
             }
 
+
         } // base
         webView.webChromeClient = object : WebChromeClient() {
-            override fun onReceivedTouchIconUrl(
-                    view: WebView?,
-                    url: String?,
-                    precomposed: Boolean
-            ) {
-                super.onReceivedTouchIconUrl(view, url, precomposed)
-                Log.d(TAG, "touch url : ${url.toString()} ")
-            }
-
             override fun onCreateWindow(
                     view: WebView?,
                     isDialog: Boolean,
@@ -203,30 +191,12 @@ open class MainWebViewActivity : BaseActivity() {
                 return super.onCreateWindow(view, isDialog, isUserGesture, resultMsg)
             }
 
+
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
                 Log.d(TAG, "onProgressChanged : ${webView.url.toString()} $newProgress")
 
             }
-
-            override fun onJsBeforeUnload(
-                    view: WebView?,
-                    url: String?,
-                    message: String?,
-                    result: JsResult?
-            ): Boolean {
-                Log.d(
-                        TAG,
-                        "onJsBeforeUnload : ${webView.url.toString()} ${url.toString()} ${result.toString()}"
-                )
-                return super.onJsBeforeUnload(view, url, message, result)
-            }
-
-            override fun onReceivedTitle(view: WebView?, title: String?) {
-                super.onReceivedTitle(view, title)
-                Log.d(TAG, "onReceivedTitle : ${webView.url.toString()} ${title.toString()} ")
-            }
-
         } // base
         webView.addJavascriptInterface(object : WebViewJavascriptInterface() {}, "AndroidCopin") // base
 
@@ -308,7 +278,6 @@ open class MainWebViewActivity : BaseActivity() {
                     }
                 }
     } // account
-
 
     private fun loginAuthServerWithFirebaseUser(user: FirebaseUser) {
         try {
@@ -421,19 +390,20 @@ open class MainWebViewActivity : BaseActivity() {
                         billingAgent.consumePurchase(purchaseToken)
                     } else {
                         Log.d(TAG, "onResponse: BackEnd Says Not OK")
+                        billingAgent.endBillingConnection()
                     }
                     webView.loadUrl("javascript:payDone()")
-                    selectedRevenue?.let { rev ->
-                        branchEventPurchaseCoin(rev)
-                        firebaseEventPurchaseCoin(rev)
+                    selectedItem?.let { item ->
+                        branchEventPurchaseCoin(item)
+                        firebaseEventPurchaseCoin(item)
                     }
                 }
             }
 
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
-                selectedRevenue?.let { rev ->
-                    branchEventPurchaseCoin(rev)
-                    firebaseEventPurchaseCoin(rev)
+                selectedItem?.let { item ->
+                    branchEventPurchaseCoin(item)
+                    firebaseEventPurchaseCoin(item)
                 }
                 Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
@@ -465,7 +435,8 @@ open class MainWebViewActivity : BaseActivity() {
         val event = getAppPref("Event")
         val series = getAppPref("Series")
         Log.d(TAG, "onSettingPageStart: Event = $event, Series = $series")
-        webView.loadUrl("javascript:sendSubState('$event', '$series')")
+        Toast.makeText(this, "Setting Page", Toast.LENGTH_SHORT).show()
+        // TODO : webView.loadUrl("javascript:sendSubState('$event', '$series')")
     }
 
     private fun toggleSubTopic(topic: String) {
@@ -473,10 +444,10 @@ open class MainWebViewActivity : BaseActivity() {
         if (getAppPref(topic) == "Y") {
             FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
                     .addOnSuccessListener {
-                        putAppPref(topic, "N")
+                        putAppPref(topic, "")
                         Toast.makeText(this, "$topic notification unsubscribed", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
-                        // TODO : CALL WEB VIEW SCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "N"
+                        // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "N"
                     }
                     .addOnFailureListener {
                         Log.e(TAG, "toggleSubTopic: error", it)
@@ -488,13 +459,14 @@ open class MainWebViewActivity : BaseActivity() {
                         putAppPref(topic, "Y")
                         Toast.makeText(this, "$topic notification subscribed", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
-                        // TODO : CALL WEB VIEW SCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "Y"
+                        // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "Y"
                     }
                     .addOnFailureListener {
                         Log.e(TAG, "toggleSubTopic: error", it)
                     }
         }
     } // base
+
 
 
     private fun branchEventCreateAccount(providerId: String) {
@@ -506,15 +478,35 @@ open class MainWebViewActivity : BaseActivity() {
                 .logEvent(this)
     } // log
 
-    fun branchEventPurchaseCoin(revenue: Double) {
+    fun branchEventPurchaseCoin(item: CoinItem) {
         Log.d(TAG, "branchEventPurchaseCoin: invoked")
         BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
                 .setCurrency(CurrencyType.USD)
-                .setRevenue(revenue)
-                .setDescription("Purchase Coin")
+                .setRevenue(item.price)
+                .setDescription(item.id)
                 .logEvent(this)
     } // log
 
+    private fun branchCustomEvent(eventName: String, params: String?) {
+        Log.d(TAG, "branchEvent: e = $eventName, p = $params")
+        var obj = ""
+        if (params == null || params == "" || params == "undefined" || params == "{}") {
+            val branch = Branch.getInstance()
+            branch.userCompletedAction(eventName)
+        } else {
+            obj = params
+            try {
+                val jsonObj = JSONObject(obj)
+                val branch = Branch.getInstance()
+                branch.userCompletedAction(eventName, jsonObj)
+            } catch (e: Exception) {
+                Log.e(TAG, "branchEvent: error", e)
+            }
+        }
+        Log.d(TAG, "branchEvent: p = $params")
+        Log.d(TAG, "branchEvent: e = $eventName")
+        /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
+    }
 
     private fun firebaseEventCreateAccount(providerId: String) {
         Log.d(TAG, "firebaseEventCreateAccount: invoked, method = $providerId")
@@ -529,12 +521,12 @@ open class MainWebViewActivity : BaseActivity() {
         firebaseAnalytics.logEvent(eventName, bundleParams(j))
     } // log
 
-    private fun firebaseEventSpendCoin(episodeId: String, kind: String, value: Double) {
+    private fun firebaseEventSpendCoin(episodeId: String, currency: String, value: String) {
         Log.d(TAG, "firebaseEventSpendCoin: invoked")
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SPEND_VIRTUAL_CURRENCY) {
             param(FirebaseAnalytics.Param.ITEM_NAME, episodeId)
-            param(FirebaseAnalytics.Param.VIRTUAL_CURRENCY_NAME, kind)
-            param(FirebaseAnalytics.Param.VALUE, value)
+            param(FirebaseAnalytics.Param.VIRTUAL_CURRENCY_NAME, currency)
+            param(FirebaseAnalytics.Param.VALUE, value.toDouble())
         }
     } // log
 
@@ -545,25 +537,22 @@ open class MainWebViewActivity : BaseActivity() {
         }
     } // log
 
-    fun firebaseEventPurchaseCoin(revenue: Double) {
+    fun firebaseEventPurchaseCoin(item: CoinItem) {
         val coinItem = Bundle().apply {
-            putString(FirebaseAnalytics.Param.ITEM_ID, "SKU_123")
-            putString(FirebaseAnalytics.Param.ITEM_NAME, "cointest")
-            putString(FirebaseAnalytics.Param.ITEM_CATEGORY, "coins")
-            putString(FirebaseAnalytics.Param.ITEM_VARIANT, "coin10")
-            putString(FirebaseAnalytics.Param.ITEM_BRAND, "Copin Comics")
-            putDouble(FirebaseAnalytics.Param.PRICE, 1.99)
+            putString(FirebaseAnalytics.Param.ITEM_ID, item.id)
+            putString(FirebaseAnalytics.Param.ITEM_NAME, item.name)
+            putString(FirebaseAnalytics.Param.ITEM_CATEGORY, item.category)
+            putString(FirebaseAnalytics.Param.ITEM_VARIANT, item.variant)
+            putString(FirebaseAnalytics.Param.ITEM_BRAND, item.brand)
+            putDouble(FirebaseAnalytics.Param.PRICE, item.price)
         }
-        Log.d(TAG, "firebaseEventPurchase: invoked")
+
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.PURCHASE) {
             param(FirebaseAnalytics.Param.CURRENCY, "USD")
             param(FirebaseAnalytics.Param.AFFILIATION, "Google Store")
-            param(FirebaseAnalytics.Param.VALUE, revenue)
-            param(FirebaseAnalytics.Param.TAX, 0.0)
-            param(FirebaseAnalytics.Param.SHIPPING, 0.0)
-            param(FirebaseAnalytics.Param.ITEMS, "coinTest")
+            param(FirebaseAnalytics.Param.VALUE, item.price)
+            param(FirebaseAnalytics.Param.ITEMS, coinItem)
             param(FirebaseAnalytics.Param.QUANTITY, 1)
-            param(FirebaseAnalytics.Param.PRICE, arrayOf(coinItem))
         }
     } // log
 
@@ -631,7 +620,7 @@ open class MainWebViewActivity : BaseActivity() {
             }
 
             else -> {
-                if (webView.canGoBack()) {
+                if (webView.canGoBack() && currentUrl != entryURL) {
                     webView.goBack()
                 } else {
                     val builder = AlertDialog.Builder(this, R.style.AlertDialogCustom)
@@ -657,6 +646,14 @@ open class MainWebViewActivity : BaseActivity() {
         loadingDialog.dismiss()
         unregisterNetworkCallback(networkCallback)
     } // base
+
+    override fun onDestroy() {
+        if(currentUrl.contains("m=payment") && billingAgent.billingClient != null) {
+            Log.d(TAG, "onDestroy: End Billing Connection")
+            billingAgent.endBillingConnection()
+        }
+        super.onDestroy()
+    }
 
     open inner class WebViewJavascriptInterface {
         @JavascriptInterface
@@ -698,24 +695,8 @@ open class MainWebViewActivity : BaseActivity() {
 
         @JavascriptInterface
         fun branchEvent(eventName: String, params: String?) {
-            Log.d(TAG, "branchEvent: e = $eventName, p = $params")
-            var obj = ""
-            if (params == null || params == "" || params == "undefined" || params == "{}") {
-                val branch = Branch.getInstance()
-                branch.userCompletedAction(eventName)
-            } else {
-                obj = params
-                try {
-                    val jsonObj = JSONObject(obj)
-                    val branch = Branch.getInstance()
-                    branch.userCompletedAction(eventName, jsonObj)
-                } catch (e: Exception) {
-                    Log.e(TAG, "branchEvent: error", e)
-                }
-            }
-            Log.d(TAG, "branchEvent: p = $params")
-            Log.d(TAG, "branchEvent: e = $eventName")
-            /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
+            Log.d(TAG, "branchEvent: invoked")
+            branchCustomEvent(eventName, params)
         }
 
         @JavascriptInterface
@@ -733,7 +714,6 @@ open class MainWebViewActivity : BaseActivity() {
         @JavascriptInterface
         fun selectProduct(id: String) {
             Log.d(TAG, "selectProduct: id = $id")
-            val revenueList = arrayListOf(1.99, 3.99, 12.99, 59.99, 109.99)
             val productIndex: Int? = when (id) {
                 "c10" -> 0
                 "c30" -> 1
@@ -742,9 +722,16 @@ open class MainWebViewActivity : BaseActivity() {
                 "c1000" -> 4
                 else -> null
             }
+            val itemList: List<CoinItem> = arrayListOf(
+                    CoinItem("a_coin10","a_coin10","coin","a_coin10","copin comics", 1.99),
+                    CoinItem("a_coin30","a_coin30","coin","a_coin30","copin comics", 3.99),
+                    CoinItem("a_coin100","a_coin100","coin","a_coin100","copin comics", 12.99),
+                    CoinItem("a_coin500","a_coin500","coin","a_coin500","copin comics", 59.99),
+                    CoinItem("a_coin1000","a_coin1000","coin","a_coin1000","copin comics", 109.99)
+            )
             if (productIndex != null) {
                 billingAgent.launchBillingFlow(billingAgent.dataSorted[productIndex])
-                selectedRevenue = revenueList[productIndex]
+                selectedItem = itemList[productIndex]
             } else {
                 Toast.makeText(this@MainWebViewActivity, "Product Id Invalid", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "selectProduct: Invalid Product Index")
@@ -754,7 +741,7 @@ open class MainWebViewActivity : BaseActivity() {
         @JavascriptInterface
         fun toggleSubTopicState(topic: String) {
             Log.d(TAG, "toggleSubTopicState: invoked -> $topic")
-            toggleSubTopicState(topic)
+            toggleSubTopic(topic)
         }
 
         @JavascriptInterface
@@ -764,16 +751,21 @@ open class MainWebViewActivity : BaseActivity() {
         }
 
         @JavascriptInterface
-        fun share(episodeId: String) {
+        fun share(seriesId: String) {
             Log.d(TAG, "androidShare: invoked")
-            firebaseEventShare(episodeId)
+            firebaseEventShare(seriesId)
+            branchCustomEvent("share", "{'seriesId':'$seriesId'}")
         }
 
         @JavascriptInterface
-        fun spendCoin(episodeId: String, currency: String, value: Double) {
-            Log.d(TAG, "spendCoin: invoked, e = $episodeId, c = $currency, v = $value")
-            firebaseEventSpendCoin(episodeId, currency, value)
+        fun spendCoin(seriesId: String, currency: String, value: String) {
+            Log.d(TAG, "spendCoin: invoked, e = $seriesId, c = $currency, v = $value")
+            firebaseEventSpendCoin(seriesId, currency, value)
+            branchCustomEvent("SPEND_VIRTUAL_CURRENCY", "{'item_name':'$seriesId','currency':'$currency','value':'$value'}")
         }
+
     } // pay
+
+
 
 }

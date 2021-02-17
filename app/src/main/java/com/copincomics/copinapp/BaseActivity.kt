@@ -27,7 +27,7 @@ open class BaseActivity : AppCompatActivity() {
     lateinit var repo: ServiceRepo
     lateinit var loadingDialog: AlertDialog
     lateinit var firebaseAnalytics: FirebaseAnalytics
-    var entryURL: String = "https://stage.copincomics.com"
+    var entryURL: String = "https://stage.copincomics.com/"
 
     fun init() {
         sharedPreferences = applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)

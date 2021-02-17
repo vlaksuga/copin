@@ -25,7 +25,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/google_login_btn"
-        app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/email_sign_up_btn"
@@ -72,10 +72,10 @@
         android:layout_marginStart="16dp"
         android:backgroundTint="#0000FF"
         android:src="@android:mipmap/sym_def_app_icon"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="@+id/google_login_btn"
         app:layout_constraintStart_toEndOf="@+id/twitter_login_btn"
-        app:layout_constraintTop_toTopOf="@+id/google_login_btn" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/google_login_btn"

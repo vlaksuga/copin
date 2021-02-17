@@ -17,32 +17,37 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     private val bonusList = arrayListOf("0", "10", "35", "200", "440")
     private val coinList = arrayListOf("10", "30", "100", "500", "1000")
     private val bestTagList = arrayListOf("", "", "", "Y", "")
-    private var jsonData : JSONArray? = null
+    private var jsonData: JSONArray? = null
     var dataSorted = listOf<SkuDetails>()
 
-    private lateinit var billingClient: BillingClient
+    var billingClient: BillingClient? = null
 
     fun buildBillingClient() {
         Log.d(TAG, "buildBillingClient: start")
-        billingClient = BillingClient.newBuilder(activity)  // TODO : Billing 클라이언트 하나만 만들게 로직 바꾸기 메뉴얼보기
-            .setListener(this)
-            .build()
-        Log.d(TAG, "buildBillingClient: end")
+        if(billingClient == null) {
+            billingClient = BillingClient.newBuilder(activity)
+                    .enablePendingPurchases()
+                    .setListener(this)
+                    .build()
+            Log.d(TAG, "buildBillingClient: end")
+        }
         startBillingConnection()
     }
 
-    fun startBillingConnection() {
+    private fun startBillingConnection() {
         Log.d(TAG, "startBillingConnection: start")
-        billingClient.startConnection(object : BillingClientStateListener { // todo : connection option들 체크하기
+        billingClient?.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    if(billingClient.isReady) {
+                    if (billingClient?.isReady == true) {
+                        Toast.makeText(activity, "Start Billing Connection", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "onBillingSetupFinished: ok")
                         checkProductUnconsumed()
                     }
                 } else {
                     Log.d(TAG, "onBillingSetupFinished: ${result.debugMessage}")
                     Toast.makeText(activity, "Billing Service Error, Please Try Again", Toast.LENGTH_SHORT).show()
+                    endBillingConnection()
                 }
             }
 
@@ -55,7 +60,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
 
     fun checkProductUnconsumed() {
         Log.d(TAG, "checkProductUnconsumed: start")
-        val purchaseList = billingClient.queryPurchases(BillingClient.SkuType.INAPP).purchasesList
+        val purchaseList = billingClient?.queryPurchases(BillingClient.SkuType.INAPP)?.purchasesList
         Log.d(TAG, "checkProductUnconsumed: purchaselist = $purchaseList")
         if (purchaseList != null && purchaseList.size != 0) {
             Log.d(TAG, "checkProductUnconsumed: ${purchaseList.size} unconsumed items")
@@ -74,22 +79,22 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         params.setSkusList(productIdsList)
                 .setType(BillingClient.SkuType.INAPP)
 
-        billingClient.querySkuDetailsAsync(
+        billingClient?.querySkuDetailsAsync(
                 params.build()
         ) { result, list ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "queryInventoryAsync: Response Code is OK")
-                if(!list.isNullOrEmpty()) {
+                if (!list.isNullOrEmpty()) {
                     list.let { skuDetails ->
                         // CHECK jsonData is null
-                        if(jsonData == null) {
+                        if (jsonData == null) {
                             Log.d(TAG, "queryInventoryAsync: jsonData is null")
                             productDetailList = skuDetails
                             dataSorted = productDetailList!!.sortedBy { it.priceAmountMicros }
                             Log.d(TAG, "queryInventoryAsync: dataSorted = $dataSorted")
                             val theList = arrayListOf<HashMap<String, String>>()
-                            for((index, data) in dataSorted.withIndex()) {
-                                val map : HashMap<String, String> = hashMapOf()
+                            for ((index, data) in dataSorted.withIndex()) {
+                                val map: HashMap<String, String> = hashMapOf()
                                 map["pid"] = data.sku
                                 map["a"] = data.price
                                 map["b"] = bonusList[index]
@@ -101,7 +106,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                             }
                             jsonData = JSONArray(theList)
                         }
-                        activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')")  }
+                        activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')") }
                         Log.d(TAG, "setDataTt: setData = $jsonData")
                         Log.d(TAG, "queryInventoryAsync: Completed")
                     }
@@ -117,16 +122,15 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchaseList: MutableList<Purchase>?) {
-        Log.d(TAG, "onPurchasesUpdated: invoked") // todo : 컨슘될때 타는지 체크
+        Log.d(TAG, "onPurchasesUpdated: invoked")
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                if (purchaseList != null) {
-                    if (purchaseList.size > 0) {
+                if (purchaseList != null && purchaseList.size > 0) {
                         activity.sendBackEnd(purchaseList[0].purchaseToken, purchaseList[0].sku)
                         Log.d(TAG, "onPurchasesUpdated: Purchase = $purchaseList[0]")
-                    } else {
-                        Log.d(TAG, "onPurchasesUpdated: Purchase List is Empty")
-                    }
+                } else {
+                    Toast.makeText(activity, "Purchase List is Empty", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "onPurchasesUpdated: Purchase List is Empty")
                 }
             }
             BillingClient.BillingResponseCode.SERVICE_TIMEOUT -> {
@@ -143,17 +147,16 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
 
     fun consumePurchase(purchaseToken: String) {
         val consumeParams = ConsumeParams.newBuilder()
-            .setPurchaseToken(purchaseToken)
-            .build()
+                .setPurchaseToken(purchaseToken)
+                .build()
 
-        billingClient.consumeAsync(consumeParams) { res, _ ->
+        billingClient?.consumeAsync(consumeParams) { res, _ ->
             if (res.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "consumePurchase: consume ok")
-                billingClient.endConnection()
             } else {
                 Log.d(TAG, "consumePurchase: consume not ok")
-                billingClient.endConnection()
             }
+            endBillingConnection()
         }
     }
 
@@ -162,7 +165,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                 .setPurchaseToken(purchaseToken)
                 .build()
 
-        billingClient.consumeAsync(consumeParams) { res, _ ->
+        billingClient?.consumeAsync(consumeParams) { res, _ ->
             if (res.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "consumePurchase: consume ok")
                 queryInventoryAsync()
@@ -176,13 +179,21 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     fun launchBillingFlow(item: SkuDetails) {
         val productId = item.sku
         val flowParams = BillingFlowParams.newBuilder()
-            .setSkuDetails(item)
-            .setObfuscatedAccountId("${activity.accountPKey}:$productId")
-            .build()
-        billingClient.launchBillingFlow(activity, flowParams)
+                .setSkuDetails(item)
+                .setObfuscatedAccountId("${activity.accountPKey}:$productId")
+                .build()
+        billingClient?.launchBillingFlow(activity, flowParams)
         Log.d(TAG, "launchBillingFlow: accountPKey = ${activity.accountPKey}, pid = $productId")
     }
 
+    fun endBillingConnection() {
+        if(billingClient != null) {
+            billingClient!!.endConnection()
+            Toast.makeText(activity, "End Billing Connection", Toast.LENGTH_SHORT).show()
+            billingClient = null
+            Log.d(TAG, "endBillingConnection: done")
+        }
+    }
 
 
 }
