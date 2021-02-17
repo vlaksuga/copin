@@ -25,12 +25,10 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     fun buildBillingClient() {
         Log.d(TAG, "buildBillingClient: start")
         billingClient = BillingClient.newBuilder(activity)  // TODO : Billing 클라이언트 하나만 만들게 로직 바꾸기 메뉴얼보기
-            .enablePendingPurchases()
             .setListener(this)
             .build()
         Log.d(TAG, "buildBillingClient: end")
         startBillingConnection()
-        checkProductUnconsumed() // Todo : 컨슘체크 끝나면 리스트 불러오기
     }
 
     fun startBillingConnection() {
@@ -38,8 +36,10 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         billingClient.startConnection(object : BillingClientStateListener { // todo : connection option들 체크하기
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    Log.d(TAG, "onBillingSetupFinished: ok")
-                    queryInventoryAsync()
+                    if(billingClient.isReady) {
+                        Log.d(TAG, "onBillingSetupFinished: ok")
+                        checkProductUnconsumed()
+                    }
                 } else {
                     Log.d(TAG, "onBillingSetupFinished: ${result.debugMessage}")
                     Toast.makeText(activity, "Billing Service Error, Please Try Again", Toast.LENGTH_SHORT).show()
@@ -54,15 +54,17 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     }
 
     fun checkProductUnconsumed() {
+        Log.d(TAG, "checkProductUnconsumed: start")
         val purchaseList = billingClient.queryPurchases(BillingClient.SkuType.INAPP).purchasesList
-
-        if (purchaseList != null) {
+        Log.d(TAG, "checkProductUnconsumed: purchaselist = $purchaseList")
+        if (purchaseList != null && purchaseList.size != 0) {
             Log.d(TAG, "checkProductUnconsumed: ${purchaseList.size} unconsumed items")
             for (purchase in purchaseList) {
                 activity.sendBackEndForCheckUnconsumed(purchase.purchaseToken, purchase.sku)
             }
         } else {
             Log.d(TAG, "checkProductUnconsumed: No unconsumed item")
+            queryInventoryAsync()
         }
     }
 
@@ -79,8 +81,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                 Log.d(TAG, "queryInventoryAsync: Response Code is OK")
                 if(!list.isNullOrEmpty()) {
                     list.let { skuDetails ->
-
-                        // CHECK jsonData in null
+                        // CHECK jsonData is null
                         if(jsonData == null) {
                             Log.d(TAG, "queryInventoryAsync: jsonData is null")
                             productDetailList = skuDetails
@@ -100,7 +101,6 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
                             }
                             jsonData = JSONArray(theList)
                         }
-
                         activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')")  }
                         Log.d(TAG, "setDataTt: setData = $jsonData")
                         Log.d(TAG, "queryInventoryAsync: Completed")
@@ -149,7 +149,25 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         billingClient.consumeAsync(consumeParams) { res, _ ->
             if (res.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "consumePurchase: consume ok")
+                billingClient.endConnection()
             } else {
+                Log.d(TAG, "consumePurchase: consume not ok")
+                billingClient.endConnection()
+            }
+        }
+    }
+
+    fun consumePurchaseRetry(purchaseToken: String) {
+        val consumeParams = ConsumeParams.newBuilder()
+                .setPurchaseToken(purchaseToken)
+                .build()
+
+        billingClient.consumeAsync(consumeParams) { res, _ ->
+            if (res.responseCode == BillingClient.BillingResponseCode.OK) {
+                Log.d(TAG, "consumePurchase: consume ok")
+                queryInventoryAsync()
+            } else {
+                Toast.makeText(activity, "Consume Purchase Failed. Please Retry", Toast.LENGTH_SHORT).show()
                 Log.d(TAG, "consumePurchase: consume not ok")
             }
         }

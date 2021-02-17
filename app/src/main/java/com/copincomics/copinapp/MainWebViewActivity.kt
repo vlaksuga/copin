@@ -40,6 +40,7 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import kotlin.reflect.typeOf
 
 open class MainWebViewActivity : BaseActivity() {
 
@@ -446,7 +447,7 @@ open class MainWebViewActivity : BaseActivity() {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
                         Log.d(TAG, "onResponse: BackEnd Says OK")
-                        billingAgent.consumePurchase(purchaseToken)
+                        billingAgent.consumePurchaseRetry(purchaseToken)
                     } else {
                         Log.d(TAG, "onResponse: BackEnd Says Not OK")
                     }
@@ -458,7 +459,6 @@ open class MainWebViewActivity : BaseActivity() {
             }
         })
     } // pay
-
 
     fun onSettingPageStart() {
         Log.d(TAG, "onSettingPageStart: invoked")
@@ -698,8 +698,9 @@ open class MainWebViewActivity : BaseActivity() {
 
         @JavascriptInterface
         fun branchEvent(eventName: String, params: String?) {
+            Log.d(TAG, "branchEvent: e = $eventName, p = $params")
             var obj = ""
-            if (params == null || "" == params) {
+            if (params == null || params == "" || params == "undefined" || params == "{}") {
                 val branch = Branch.getInstance()
                 branch.userCompletedAction(eventName)
             } else {
@@ -712,8 +713,8 @@ open class MainWebViewActivity : BaseActivity() {
                     Log.e(TAG, "branchEvent: error", e)
                 }
             }
-            Log.d(TAG, "branchEvent: $params")
-            Log.d(TAG, "branchEvent: $eventName")
+            Log.d(TAG, "branchEvent: p = $params")
+            Log.d(TAG, "branchEvent: e = $eventName")
             /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
         }
 
