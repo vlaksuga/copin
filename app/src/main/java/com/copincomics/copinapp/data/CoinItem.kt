@@ -1,6 +1,6 @@
 package com.copincomics.copinapp.data
 
-data class CoinItem (
+data class CoinItem(
         val id: String,
         val name: String,
         val category: String,

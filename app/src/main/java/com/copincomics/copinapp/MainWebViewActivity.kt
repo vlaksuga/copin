@@ -1,9 +1,7 @@
 package com.copincomics.copinapp
 
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
@@ -24,7 +22,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.auth.*
@@ -55,16 +52,6 @@ open class MainWebViewActivity : BaseActivity() {
     lateinit var auth: FirebaseAuth // base
     lateinit var googleSignInClient: GoogleSignInClient // account
     lateinit var callbackManager: CallbackManager // account
-
-    // dummy buttons // main
-    lateinit var fabApple: FloatingActionButton
-    lateinit var fabTwitter: FloatingActionButton
-    lateinit var fabFacebook: FloatingActionButton
-    lateinit var fabGoogle: FloatingActionButton
-    lateinit var fabEmail: FloatingActionButton
-    lateinit var fabLogout: FloatingActionButton
-    lateinit var fabPay: FloatingActionButton
-    lateinit var fabEmailSignUp: FloatingActionButton
 
     // Billing Service // pay
     private val billingAgent = WebBillingAgent(this)
@@ -109,27 +96,12 @@ open class MainWebViewActivity : BaseActivity() {
             Log.d(TAG, "onCreate: currentUrl = $link")
         } // main
 
-        // From Toon:// URI SCHEME
-        entryIntent.getStringExtra("toon")?.let { toon ->
+        // From toon:// URI SCHEME
+            entryIntent.getStringExtra("toon")?.let { toon ->
             currentUrl = "$entryURL?c=toon&k=$toon"
             Log.d(TAG, "onCreate: currentUrl = $entryURL?c=toon&k=$toon")
         } // main
 
-        // dummy buttons
-        fabApple = findViewById(R.id.apple_login_btn) // main
-        fabTwitter = findViewById(R.id.twitter_login_btn) // main
-        fabFacebook = findViewById(R.id.facebook_login_btn) // main
-        fabGoogle = findViewById(R.id.google_login_btn) // main
-        fabEmail = findViewById(R.id.email_login_btn) // main
-        fabLogout = findViewById(R.id.logout_btn) // main
-        fabPay = findViewById(R.id.purchase_btn) // main
-        fabEmailSignUp = findViewById(R.id.email_sign_up_btn) // main
-
-
-        fabFacebook.setOnClickListener {
-            firebaseEventSpendCoin("test114","coin", "2")
-            branchCustomEvent("SPEND_VIRTUAL_CURRENCY", "{'item_name':'test114','currency':'coin','value':'2'}")
-        }
 
 
         // webView settings // base
@@ -144,11 +116,11 @@ open class MainWebViewActivity : BaseActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                if(currentUrl.contains("m=payment") && url?.contains("m_ps.html") == false) {
-                   billingAgent.endBillingConnection()
+                if (currentUrl.contains("m=payment") && url?.contains("m_ps.html") == false) {
+                    billingAgent.endBillingConnection()
                 }
 
-                if(url?.contains("m=setting") == true) {
+                if (url?.contains("m=setting") == true) {
                     Log.d(TAG, "onPageStarted: this is setting page")
                     onSettingPageStart()
                 }
@@ -310,7 +282,8 @@ open class MainWebViewActivity : BaseActivity() {
                                                 }
                                             }
                                             loadingDialog.dismiss()
-                                            webView.loadUrl("javascript:loginWithFirebase('$idToken')")
+                                            val c = getAppPref("deviceId")
+                                            webView.loadUrl("javascript:loginWithFirebase('$idToken', '$c', 'android')")
                                         } else {
                                             Log.d(TAG, "onResponse: error : , ${response.body()!!.head.msg}")
                                         }
@@ -395,7 +368,6 @@ open class MainWebViewActivity : BaseActivity() {
                     webView.loadUrl("javascript:payDone()")
                     selectedItem?.let { item ->
                         branchEventPurchaseCoin(item)
-                        firebaseEventPurchaseCoin(item)
                     }
                 }
             }
@@ -403,7 +375,6 @@ open class MainWebViewActivity : BaseActivity() {
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
                 selectedItem?.let { item ->
                     branchEventPurchaseCoin(item)
-                    firebaseEventPurchaseCoin(item)
                 }
                 Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
@@ -467,8 +438,6 @@ open class MainWebViewActivity : BaseActivity() {
         }
     } // base
 
-
-
     private fun branchEventCreateAccount(providerId: String) {
         Log.d(TAG, "branchEventCreateAccount: invoked")
         BranchEvent(BRANCH_STANDARD_EVENT.COMPLETE_REGISTRATION)
@@ -516,9 +485,11 @@ open class MainWebViewActivity : BaseActivity() {
     } // log
 
     fun firebaseCustomEvent(eventName: String, params: String) {
-        Log.d(TAG, "firebaseCustomEvent: invoked")
-        val j = JSONObject(params)
-        firebaseAnalytics.logEvent(eventName, bundleParams(j))
+        try {
+            Log.d(TAG, "firebaseCustomEvent: invoked")
+            val j = JSONObject(params)
+            firebaseAnalytics.logEvent(eventName, bundleParams(j))
+        } catch (e: Exception) {}
     } // log
 
     private fun firebaseEventSpendCoin(episodeId: String, currency: String, value: String) {
@@ -533,26 +504,8 @@ open class MainWebViewActivity : BaseActivity() {
     private fun firebaseEventShare(itemID: String) {
         Log.d(TAG, "firebaseEventSpendCoin: invoked")
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE) {
+            param(FirebaseAnalytics.Param.CONTENT_TYPE, "Content_id")
             param(FirebaseAnalytics.Param.ITEM_ID, itemID)
-        }
-    } // log
-
-    fun firebaseEventPurchaseCoin(item: CoinItem) {
-        val coinItem = Bundle().apply {
-            putString(FirebaseAnalytics.Param.ITEM_ID, item.id)
-            putString(FirebaseAnalytics.Param.ITEM_NAME, item.name)
-            putString(FirebaseAnalytics.Param.ITEM_CATEGORY, item.category)
-            putString(FirebaseAnalytics.Param.ITEM_VARIANT, item.variant)
-            putString(FirebaseAnalytics.Param.ITEM_BRAND, item.brand)
-            putDouble(FirebaseAnalytics.Param.PRICE, item.price)
-        }
-
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.PURCHASE) {
-            param(FirebaseAnalytics.Param.CURRENCY, "USD")
-            param(FirebaseAnalytics.Param.AFFILIATION, "Google Store")
-            param(FirebaseAnalytics.Param.VALUE, item.price)
-            param(FirebaseAnalytics.Param.ITEMS, coinItem)
-            param(FirebaseAnalytics.Param.QUANTITY, 1)
         }
     } // log
 
@@ -595,7 +548,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     override fun onBackPressed() {
         when {
-            currentUrl == entryURL -> {
+            currentUrl == entryURL || currentUrl == "$entryURL/" -> {
                 val builder = AlertDialog.Builder(this, R.style.AlertDialogCustom)
                 builder.apply {
                     setMessage("Do you really want to quit?")
@@ -620,16 +573,10 @@ open class MainWebViewActivity : BaseActivity() {
             }
 
             else -> {
-                if (webView.canGoBack() && currentUrl != entryURL) {
+                if (webView.canGoBack()) {
                     webView.goBack()
                 } else {
-                    val builder = AlertDialog.Builder(this, R.style.AlertDialogCustom)
-                    builder.apply {
-                        setMessage("Do you really want to quit?")
-                        setPositiveButton("Yes") { _, _ -> super.onBackPressed() }
-                        setNegativeButton("No") { dialog, _ -> dialog.dismiss() }
-                        show()
-                    }
+                    restartToBaseUrl()
                 }
 
             }
@@ -648,7 +595,7 @@ open class MainWebViewActivity : BaseActivity() {
     } // base
 
     override fun onDestroy() {
-        if(currentUrl.contains("m=payment") && billingAgent.billingClient != null) {
+        if (currentUrl.contains("m=payment") && billingAgent.billingClient != null) {
             Log.d(TAG, "onDestroy: End Billing Connection")
             billingAgent.endBillingConnection()
         }
@@ -723,11 +670,11 @@ open class MainWebViewActivity : BaseActivity() {
                 else -> null
             }
             val itemList: List<CoinItem> = arrayListOf(
-                    CoinItem("a_coin10","a_coin10","coin","a_coin10","copin comics", 1.99),
-                    CoinItem("a_coin30","a_coin30","coin","a_coin30","copin comics", 3.99),
-                    CoinItem("a_coin100","a_coin100","coin","a_coin100","copin comics", 12.99),
-                    CoinItem("a_coin500","a_coin500","coin","a_coin500","copin comics", 59.99),
-                    CoinItem("a_coin1000","a_coin1000","coin","a_coin1000","copin comics", 109.99)
+                    CoinItem("a_coin10", "a_coin10", "coin", "a_coin10", "copin comics", 1.99),
+                    CoinItem("a_coin30", "a_coin30", "coin", "a_coin30", "copin comics", 3.99),
+                    CoinItem("a_coin100", "a_coin100", "coin", "a_coin100", "copin comics", 12.99),
+                    CoinItem("a_coin500", "a_coin500", "coin", "a_coin500", "copin comics", 59.99),
+                    CoinItem("a_coin1000", "a_coin1000", "coin", "a_coin1000", "copin comics", 109.99)
             )
             if (productIndex != null) {
                 billingAgent.launchBillingFlow(billingAgent.dataSorted[productIndex])
@@ -765,7 +712,6 @@ open class MainWebViewActivity : BaseActivity() {
         }
 
     } // pay
-
 
 
 }

@@ -163,7 +163,7 @@ class EntryActivity : BaseActivity() {
                                 .show()
                     } else {
                         Log.d(TAG, "onResponse: No need to update app")
-                        if (curVersion >= recentVersion) {
+                        if (curVersion > recentVersion) {
                             Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
                             Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
                             putAppPref("e", defaultEntryURL)
@@ -272,9 +272,7 @@ class EntryActivity : BaseActivity() {
                 updateDeviceId = true
                 Log.d(TAG, "updateDeviceId: end")
                 subscribeInit()
-
             }
-
         }
     }
 

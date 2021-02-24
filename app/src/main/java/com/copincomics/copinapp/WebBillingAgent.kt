@@ -40,7 +40,6 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     if (billingClient?.isReady == true) {
-                        Toast.makeText(activity, "Start Billing Connection", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "onBillingSetupFinished: ok")
                         checkProductUnconsumed()
                     }
@@ -189,7 +188,6 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     fun endBillingConnection() {
         if(billingClient != null) {
             billingClient!!.endConnection()
-            Toast.makeText(activity, "End Billing Connection", Toast.LENGTH_SHORT).show()
             billingClient = null
             Log.d(TAG, "endBillingConnection: done")
         }
