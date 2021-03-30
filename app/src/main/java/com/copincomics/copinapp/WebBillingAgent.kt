@@ -18,7 +18,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
     private val coinList = arrayListOf("10", "30", "100", "500", "1000")
     private val bestTagList = arrayListOf("", "", "", "Y", "")
     private var jsonData: JSONArray? = null
-    var dataSorted = listOf<SkuDetails>()
+    var dataSorted = HashMap<String, SkuDetails>()
 
     var billingClient: BillingClient? = null
 
@@ -84,30 +84,10 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "queryInventoryAsync: Response Code is OK")
                 if (!list.isNullOrEmpty()) {
-                    list.let { skuDetails ->
-                        // CHECK jsonData is null
-                        if (jsonData == null) {
-                            Log.d(TAG, "queryInventoryAsync: jsonData is null")
-                            productDetailList = skuDetails
-                            dataSorted = productDetailList!!.sortedBy { it.priceAmountMicros }
-                            Log.d(TAG, "queryInventoryAsync: dataSorted = $dataSorted")
-                            val theList = arrayListOf<HashMap<String, String>>()
-                            for ((index, data) in dataSorted.withIndex()) {
-                                val map: HashMap<String, String> = hashMapOf()
-                                map["pid"] = data.sku
-                                map["a"] = data.price
-                                map["b"] = bonusList[index]
-                                map["off"] = ""
-                                map["c"] = coinList[index]
-                                map["best"] = bestTagList[index]
-                                theList.add(map)
-                                Log.d(TAG, "queryInventoryAsync: map $map added")
-                            }
-                            jsonData = JSONArray(theList)
+                    list.let { skuDetailsList ->
+                        for (skuDetails in skuDetailsList) {
+                            dataSorted[skuDetails.sku] = skuDetails
                         }
-                        activity.webView.post { activity.webView.loadUrl("javascript:setData('$jsonData')") }
-                        Log.d(TAG, "setDataTt: setData = $jsonData")
-                        Log.d(TAG, "queryInventoryAsync: Completed")
                     }
                 } else {
                     Toast.makeText(activity, "Inventory Invalid, Please Try Again", Toast.LENGTH_SHORT).show()

@@ -57,7 +57,6 @@ open class MainWebViewActivity : BaseActivity() {
     // Billing Service // pay
     private val billingAgent = WebBillingAgent(this)
     lateinit var accountPKey: String
-    var selectedItem: CoinItem? = null
 
 
     lateinit var webView: WebView // base
@@ -350,9 +349,6 @@ open class MainWebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-        selectedItem?.let { item ->
-            /*branchEventPurchaseCoin(item)*/
-        }
         repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
@@ -368,10 +364,7 @@ open class MainWebViewActivity : BaseActivity() {
             }
 
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
-                selectedItem?.let { item ->
-                    /*branchEventPurchaseCoin(item)*/
-                }
-                Log.e(TAG, "onFailure: Confirm from backend fail", t)
+            Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
         })
     } // pay
@@ -497,14 +490,18 @@ open class MainWebViewActivity : BaseActivity() {
     fun branchEventPurchase(itemID: String, price: String) {
         Log.d(TAG, "branchEventPurchaseCoin: invoked")
         try {
-            selectedItem?.let {
-                Log.d(TAG, "branchEventPurchase: selectedItem = $it")
-                BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
-                    .setCurrency(CurrencyType.USD)
-                    .setRevenue(it.price)
-                    .setDescription(itemID)
-                    .logEvent(this)
+
+             var rr = BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
+                .setCurrency(CurrencyType.USD)
+                .setRevenue(price.toDouble())
+                .setDescription(itemID)
+
+            var pp = price.toDoubleOrNull()
+            if (pp != null) {
+                rr.setRevenue(pp)
             }
+
+            rr.logEvent(this)
         } catch (e: Exception) {
             Log.e(TAG, "branchEventPurchaseCoin", e)
         }
@@ -680,28 +677,9 @@ open class MainWebViewActivity : BaseActivity() {
         @JavascriptInterface
         fun selectProduct(id: String) {
             Log.d(TAG, "selectProduct: id = $id")
-            val productIndex: Int? = when (id) {
-                "c10" -> 0
-                "c30" -> 1
-                "c100" -> 2
-                "c500" -> 3
-                "c1000" -> 4
-                else -> null
-            }
-            val itemList: List<CoinItem> = arrayListOf(
-                    CoinItem("coin10", "a_coin10", "coin", "a_coin10", "copin comics", 1.99),
-                    CoinItem("coin30", "a_coin30", "coin", "a_coin30", "copin comics", 3.99),
-                    CoinItem("coin100", "a_coin100", "coin", "a_coin100", "copin comics", 12.99),
-                    CoinItem("coin500", "a_coin500", "coin", "a_coin500", "copin comics", 59.99),
-                    CoinItem("coin1000", "a_coin1000", "coin", "a_coin1000", "copin comics", 109.99)
-            )
-            if (productIndex != null) {
-                billingAgent.launchBillingFlow(billingAgent.dataSorted[productIndex])
-                selectedItem = itemList[productIndex]
-            } else {
-                Toast.makeText(this@MainWebViewActivity, "Product Id Invalid", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "selectProduct: Invalid Product Index")
-            }
+            billingAgent.dataSorted[id]?.let { billingAgent.launchBillingFlow(it) } ?: {
+                Toast.makeText(this@MainWebViewActivity, "Product Id invalid", Toast.LENGTH_SHORT).show()
+            } ()
         }
 
         @JavascriptInterface
