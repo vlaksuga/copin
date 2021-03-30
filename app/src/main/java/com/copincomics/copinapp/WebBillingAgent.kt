@@ -125,6 +125,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 if (purchaseList != null && purchaseList.size > 0) {
+
                         activity.sendBackEnd(purchaseList[0].purchaseToken, purchaseList[0].sku)
                         Log.d(TAG, "onPurchasesUpdated: Purchase = $purchaseList[0]")
                 } else {

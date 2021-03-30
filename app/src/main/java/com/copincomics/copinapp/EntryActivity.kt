@@ -126,8 +126,8 @@ class EntryActivity : BaseActivity() {
         Log.d(TAG, "checkVersion: start")
         repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
             override fun onResponse(
-                    call: Call<CheckVersion>,
-                    response: Response<CheckVersion>
+                call: Call<CheckVersion>,
+                response: Response<CheckVersion>
             ) {
                 response.body()?.let { res ->
                     var minVersion = res.body.ANDROIDMIN.toIntOrNull()
@@ -151,16 +151,16 @@ class EntryActivity : BaseActivity() {
                     if (curVersion < minVersion) {
                         val builder = AlertDialog.Builder(this@EntryActivity)
                         builder.setMessage("Confirm to upgrade version?")
-                                .setPositiveButton("Confirm") { _, _ ->
-                                    startActivity(
-                                            Intent(
-                                                    Intent.ACTION_VIEW,
-                                                    Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
-                                            )
+                            .setPositiveButton("Confirm") { _, _ ->
+                                startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
                                     )
-                                    finish()
-                                }
-                                .show()
+                                )
+                                finish()
+                            }
+                            .show()
                     } else {
                         Log.d(TAG, "onResponse: No need to update app")
                         if (curVersion > recentVersion) {
@@ -188,16 +188,24 @@ class EntryActivity : BaseActivity() {
 
                         }
                     }
-
                     checkVersion = true
                     Log.d(TAG, "checkVersion: end")
                     checkLogin()
-                }
+                } ?: {
+                    Log.d(TAG, "onResponse: here??")
+                    putAppPref("e", "https://copincomics.com")
+                    putAppPref("a", "https://api.copincomics.com")
+                    checkVersion = true
+                    Log.d(TAG, "checkVersion: end")
+                    checkLogin()
+                }()
             }
 
             override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
                 Log.w(TAG, "onFailure: check version error", t)
                 Log.d(TAG, "onFailure: start Default version mode")
+                putAppPref("e", "https://copincomics.com")
+                putAppPref("a", "https://api.copincomics.com")
                 checkVersion = true
                 Log.d(TAG, "checkVersion: end")
                 checkLogin()
@@ -220,7 +228,7 @@ class EntryActivity : BaseActivity() {
                             putAppPref("t", ret.token)
                             putAppPref("nick", ret.userinfo.nick)
                             putAppPref("accountPKey", ret.userinfo.accountpkey)
-                            Log.d(TAG, "onResponse: Login Token = ${ret.t2}")
+                            Log.d(TAG, "onResponse: Auth Login Token = ${ret.t2}")
                             Log.d(TAG, "onResponse: Access Token = ${ret.token}")
                             Log.d(
                                 TAG,

@@ -15,6 +15,7 @@ import com.copincomics.copinapp.data.RetLogin
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
 import com.facebook.FacebookException
+import com.facebook.appevents.AppEventsLogger
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -102,7 +103,7 @@ open class MainWebViewActivity : BaseActivity() {
             Log.d(TAG, "onCreate: currentUrl = $entryURL?c=toon&k=$toon")
         } // main
 
-
+        WebView.setWebContentsDebuggingEnabled(true)
 
         // webView settings // base
         webView.settings.domStorageEnabled = true
@@ -113,6 +114,7 @@ open class MainWebViewActivity : BaseActivity() {
         webView.settings.javaScriptCanOpenWindowsAutomatically = false
         webView.settings.allowFileAccess = true
         webView.settings.allowContentAccess = true
+
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
@@ -179,7 +181,8 @@ open class MainWebViewActivity : BaseActivity() {
 
     override fun onStart() {
         super.onStart()
-        webView.loadUrl(currentUrl) // Each
+        webView.loadUrl(currentUrl) // Each*/
+
     }
 
     private fun payInit() {
@@ -239,13 +242,6 @@ open class MainWebViewActivity : BaseActivity() {
                         val user = auth.currentUser
                         user?.let {
                             loginAuthServerWithFirebaseUser(it)
-
-                            if (it.metadata?.creationTimestamp == it.metadata?.lastSignInTimestamp) {
-                                val provider = user.providerData[1].providerId
-                                Log.d(TAG, "signInWithCredential: provider = $provider")
-                                branchEventCreateAccount(provider)
-                                firebaseEventCreateAccount(provider)
-                            }
                         }
                     }
                 }
@@ -354,7 +350,9 @@ open class MainWebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-
+        selectedItem?.let { item ->
+            /*branchEventPurchaseCoin(item)*/
+        }
         repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
@@ -366,15 +364,12 @@ open class MainWebViewActivity : BaseActivity() {
                         billingAgent.endBillingConnection()
                     }
                     webView.loadUrl("javascript:payDone()")
-                    selectedItem?.let { item ->
-                        branchEventPurchaseCoin(item)
-                    }
                 }
             }
 
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
                 selectedItem?.let { item ->
-                    branchEventPurchaseCoin(item)
+                    /*branchEventPurchaseCoin(item)*/
                 }
                 Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
@@ -438,75 +433,40 @@ open class MainWebViewActivity : BaseActivity() {
         }
     } // base
 
-    private fun branchEventCreateAccount(providerId: String) {
-        Log.d(TAG, "branchEventCreateAccount: invoked")
-        BranchEvent(BRANCH_STANDARD_EVENT.COMPLETE_REGISTRATION)
-                .setDescription("create account")
-                .addCustomDataProperty("auth provider", providerId)
-                .addCustomDataProperty("accountPKey", accountPKey)
-                .logEvent(this)
-    } // log
-
-    fun branchEventPurchaseCoin(item: CoinItem) {
-        Log.d(TAG, "branchEventPurchaseCoin: invoked")
-        BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
-                .setCurrency(CurrencyType.USD)
-                .setRevenue(item.price)
-                .setDescription(item.id)
-                .logEvent(this)
-    } // log
-
     private fun branchCustomEvent(eventName: String, params: String?) {
-        Log.d(TAG, "branchEvent: e = $eventName, p = $params")
-        var obj = ""
         if (params == null || params == "" || params == "undefined" || params == "{}") {
             val branch = Branch.getInstance()
             branch.userCompletedAction(eventName)
+            Log.d(TAG, "branchCustomEvent: e = $eventName")
         } else {
-            obj = params
             try {
-                val jsonObj = JSONObject(obj)
+                val jsonObj = JSONObject(params)
                 val branch = Branch.getInstance()
                 branch.userCompletedAction(eventName, jsonObj)
+                Log.d(TAG, "branchCustomEvent: e = $eventName")
+                Log.d(TAG, "branchCustomEvent: p = $params")
+
             } catch (e: Exception) {
                 Log.e(TAG, "branchEvent: error", e)
             }
         }
-        Log.d(TAG, "branchEvent: p = $params")
-        Log.d(TAG, "branchEvent: e = $eventName")
+
         /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
     }
 
-    private fun firebaseEventCreateAccount(providerId: String) {
-        Log.d(TAG, "firebaseEventCreateAccount: invoked, method = $providerId")
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SIGN_UP) {
-            param(FirebaseAnalytics.Param.METHOD, providerId)
-        }
-    } // log
-
-    fun firebaseCustomEvent(eventName: String, params: String) {
+    fun firebaseCustomEvent(eventName: String, params: String?) {
         try {
             Log.d(TAG, "firebaseCustomEvent: invoked")
-            val j = JSONObject(params)
-            firebaseAnalytics.logEvent(eventName, bundleParams(j))
+            if (params == null || params == "" || params == "undefined" || params == "{}") {
+                firebaseAnalytics.logEvent(eventName) {}
+                Log.d(TAG, "firebaseCustomEvent: e = $eventName")
+            } else {
+                val j = JSONObject(params)
+                firebaseAnalytics.logEvent(eventName, bundleParams(j))
+                Log.d(TAG, "firebaseCustomEvent: e = $eventName")
+                Log.d(TAG, "firebaseCustomEvent: p = $params")
+            }
         } catch (e: Exception) {}
-    } // log
-
-    private fun firebaseEventSpendCoin(episodeId: String, currency: String, value: String) {
-        Log.d(TAG, "firebaseEventSpendCoin: invoked")
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SPEND_VIRTUAL_CURRENCY) {
-            param(FirebaseAnalytics.Param.ITEM_NAME, episodeId)
-            param(FirebaseAnalytics.Param.VIRTUAL_CURRENCY_NAME, currency)
-            param(FirebaseAnalytics.Param.VALUE, value.toDouble())
-        }
-    } // log
-
-    private fun firebaseEventShare(itemID: String) {
-        Log.d(TAG, "firebaseEventSpendCoin: invoked")
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE) {
-            param(FirebaseAnalytics.Param.CONTENT_TYPE, "Content_id")
-            param(FirebaseAnalytics.Param.ITEM_ID, itemID)
-        }
     } // log
 
     private fun bundleParams(jsonObject: JSONObject): Bundle {
@@ -519,6 +479,35 @@ open class MainWebViewActivity : BaseActivity() {
         }
         Log.d(TAG, "bundleParams: bundle = $bundle")
         return bundle
+    } // log
+
+    private fun facebookCustomEvent(eventName: String, params: String?) {
+        val logger: AppEventsLogger = AppEventsLogger.newLogger(this)
+        if (params == null || params == "" || params == "undefined" || params == "{}") {
+            logger.logEvent(eventName)
+            Log.d(TAG, "facebookCustomEvent: e = $eventName")
+        } else {
+            val j = JSONObject(params)
+            logger.logEvent(eventName, bundleParams(j))
+            Log.d(TAG, "facebookCustomEvent: e = $eventName")
+            Log.d(TAG, "facebookCustomEvent: p = $params")
+        }
+    }
+
+    fun branchEventPurchase(itemID: String, price: String) {
+        Log.d(TAG, "branchEventPurchaseCoin: invoked")
+        try {
+            selectedItem?.let {
+                Log.d(TAG, "branchEventPurchase: selectedItem = $it")
+                BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
+                    .setCurrency(CurrencyType.USD)
+                    .setRevenue(it.price)
+                    .setDescription(itemID)
+                    .logEvent(this)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "branchEventPurchaseCoin", e)
+        }
     } // log
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -641,15 +630,45 @@ open class MainWebViewActivity : BaseActivity() {
         }
 
         @JavascriptInterface
-        fun branchEvent(eventName: String, params: String?) {
-            Log.d(TAG, "branchEvent: invoked")
+        fun allEvent(eventName: String, params: String) {
+            Log.d(TAG, "allEvent: e = $eventName, p = $params invoked")
+            branchCustomEvent(eventName, params)
+            firebaseCustomEvent(eventName, params)
+            facebookCustomEvent(eventName, params)
+        }
+
+        @JavascriptInterface
+        fun allEventWithParams(eventName: String, params: String) {
+            branchCustomEvent(eventName, params)
+            firebaseCustomEvent(eventName, params)
+            facebookCustomEvent(eventName, params)
+        }
+
+        @JavascriptInterface
+        fun branchEvent(eventName: String, params: String) {
+            Log.d(TAG, "branchEvent: eventName = $eventName")
+            Log.d(TAG, "branchEvent: params = $params")
             branchCustomEvent(eventName, params)
         }
 
         @JavascriptInterface
-        fun fbEvent(eventName: String, params: String) {
-            Log.d(TAG, "fbEvent: eventName = $eventName, params: $params")
+        fun firebaseEvent(eventName: String, params: String) {
+            Log.d(TAG, "firebaseEvent: eventName = $eventName")
+            Log.d(TAG, "firebaseEvent: params = $params")
             firebaseCustomEvent(eventName, params)
+        }
+
+        @JavascriptInterface
+        fun facebookEvent(eventName: String, params: String) {
+            Log.d(TAG, "facebookEvent: eventName = $eventName")
+            Log.d(TAG, "facebookEvent: params = $params")
+            facebookCustomEvent(eventName, params)
+        }
+
+        @JavascriptInterface
+        fun branchEventPurchaseCoin(itemID: String, price: String) {
+            Log.d(TAG, "branchPurchaseCoin: invoked, item = $itemID, price = $price")
+            branchEventPurchase(itemID, price)
         }
 
         @JavascriptInterface
@@ -670,11 +689,11 @@ open class MainWebViewActivity : BaseActivity() {
                 else -> null
             }
             val itemList: List<CoinItem> = arrayListOf(
-                    CoinItem("a_coin10", "a_coin10", "coin", "a_coin10", "copin comics", 1.99),
-                    CoinItem("a_coin30", "a_coin30", "coin", "a_coin30", "copin comics", 3.99),
-                    CoinItem("a_coin100", "a_coin100", "coin", "a_coin100", "copin comics", 12.99),
-                    CoinItem("a_coin500", "a_coin500", "coin", "a_coin500", "copin comics", 59.99),
-                    CoinItem("a_coin1000", "a_coin1000", "coin", "a_coin1000", "copin comics", 109.99)
+                    CoinItem("coin10", "a_coin10", "coin", "a_coin10", "copin comics", 1.99),
+                    CoinItem("coin30", "a_coin30", "coin", "a_coin30", "copin comics", 3.99),
+                    CoinItem("coin100", "a_coin100", "coin", "a_coin100", "copin comics", 12.99),
+                    CoinItem("coin500", "a_coin500", "coin", "a_coin500", "copin comics", 59.99),
+                    CoinItem("coin1000", "a_coin1000", "coin", "a_coin1000", "copin comics", 109.99)
             )
             if (productIndex != null) {
                 billingAgent.launchBillingFlow(billingAgent.dataSorted[productIndex])
@@ -695,20 +714,6 @@ open class MainWebViewActivity : BaseActivity() {
         fun settingInit() {
             Log.d(TAG, "settingInit: invoked")
             onSettingPageStart()
-        }
-
-        @JavascriptInterface
-        fun share(seriesId: String) {
-            Log.d(TAG, "androidShare: invoked")
-            firebaseEventShare(seriesId)
-            branchCustomEvent("share", "{'seriesId':'$seriesId'}")
-        }
-
-        @JavascriptInterface
-        fun spendCoin(seriesId: String, currency: String, value: String) {
-            Log.d(TAG, "spendCoin: invoked, e = $seriesId, c = $currency, v = $value")
-            firebaseEventSpendCoin(seriesId, currency, value)
-            branchCustomEvent("SPEND_VIRTUAL_CURRENCY", "{'item_name':'$seriesId','currency':'$currency','value':'$value'}")
         }
 
     } // pay

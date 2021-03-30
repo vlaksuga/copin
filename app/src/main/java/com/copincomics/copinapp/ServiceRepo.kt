@@ -41,8 +41,8 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
 
     private fun okHttpclient(): OkHttpClient {
         val httpClient = OkHttpClient.Builder()
-        httpClient.connectTimeout(5, TimeUnit.MINUTES)
-        httpClient.readTimeout(5, TimeUnit.MINUTES)
+            .callTimeout(1, TimeUnit.MINUTES)
+            .connectTimeout(30, TimeUnit.SECONDS)
         val t = pref.getString("t", "")!!
         val c = pref.getString("deviceId", "")!!
         val d = "android"
