@@ -39,6 +39,7 @@ class EntryActivity : BaseActivity() {
         Log.d(TAG, "onCreate: start")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
+
         init()
         putAppPref("a", "https://sapi.copincomics.com")
 
