@@ -10,7 +10,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
+class ServiceRepo() : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : ServiceRepo"
@@ -43,10 +43,10 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
         val httpClient = OkHttpClient.Builder()
             .callTimeout(1, TimeUnit.MINUTES)
             .connectTimeout(30, TimeUnit.SECONDS)
-        val t = pref.getString("t", "")!!
-        val c = pref.getString("deviceId", "")!!
+        val t = App.preferences.accessToken
+        val c = App.preferences.deviceID
         val d = "android"
-        val v = curVersion.toString()
+        val v = App.currentVersion.toString()
         httpClient.addInterceptor(AuthInterceptor(t, c, d, v))
         Log.d(TAG, "okHttpclient: t=$t, c=$c, d=$d, v=$v")
         return httpClient.build()
@@ -54,13 +54,13 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
 
 
     val accountDAO: AccountDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+        .baseUrl(App.preferences.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(AccountDAO::class.java)
 
     val payDAO: PayDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+        .baseUrl(App.preferences.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(PayDAO::class.java)

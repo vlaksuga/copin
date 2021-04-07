@@ -23,14 +23,12 @@ open class BaseActivity : AppCompatActivity() {
         const val curVersion = 11
     }
 
-    lateinit var sharedPreferences: SharedPreferences
     lateinit var repo: ServiceRepo
     lateinit var loadingDialog: AlertDialog
     lateinit var firebaseAnalytics: FirebaseAnalytics
     var entryURL: String = "https://stage.copincomics.com/"
 
     fun init() {
-        sharedPreferences = applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         repo = ServiceRepo(sharedPreferences)
         firebaseAnalytics = Firebase.analytics
@@ -38,14 +36,10 @@ open class BaseActivity : AppCompatActivity() {
         builder.setCancelable(false)
         builder.setView(R.layout.dialog_loading)
         loadingDialog = builder.create()
+        val cp:CopinPref  = CopinPref.Shared();
+
     }
 
-    fun putAppPref(key: String, value: String) {
-        with(sharedPreferences.edit()) {
-            putString(key, value)
-            commit()
-        }
-    }
 
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!

@@ -39,7 +39,7 @@ class EntryActivity : BaseActivity() {
         Log.d(TAG, "onCreate: start")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
-
+        var at = CopinPref.Shared().getAc()
         init()
         putAppPref("a", "https://sapi.copincomics.com")
 
@@ -90,6 +90,7 @@ class EntryActivity : BaseActivity() {
                 .withData(this.intent.data)
                 .init()
         } catch (e: Exception) {
+
             Log.w(TAG, "onStart: Branch Init Fail", e)
         }
     }
@@ -98,6 +99,7 @@ class EntryActivity : BaseActivity() {
         super.onNewIntent(intent)
         try {
             setIntent(intent)
+
             Branch.sessionBuilder(this).withCallback { _, _ -> startActivity(intent) }.reInit()
         } catch (e: Exception) {
             Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
