@@ -1,6 +1,5 @@
 package com.copincomics.copinapp
 
-import android.content.SharedPreferences
 import android.util.Log
 import com.copincomics.copinapp.dao.AccountDAO
 import com.copincomics.copinapp.dao.PayDAO
@@ -10,11 +9,12 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class ServiceRepo() : BaseActivity() {
+class Retrofit : BaseActivity() {
+
+    val instanceSetting = AppConfig.shared()
 
     companion object {
         const val TAG = "TAG : ServiceRepo"
-        const val DEFAULT_API_URL = "https://sapi.copincomics.com"
     }
 
     private class AuthInterceptor(
@@ -43,8 +43,8 @@ class ServiceRepo() : BaseActivity() {
         val httpClient = OkHttpClient.Builder()
             .callTimeout(1, TimeUnit.MINUTES)
             .connectTimeout(30, TimeUnit.SECONDS)
-        val t = App.preferences.accessToken
-        val c = App.preferences.deviceID
+        val t = instanceSetting.acccessToken
+        val c = AppConfig.shared().deviceID
         val d = "android"
         val v = App.currentVersion.toString()
         httpClient.addInterceptor(AuthInterceptor(t, c, d, v))
@@ -54,13 +54,13 @@ class ServiceRepo() : BaseActivity() {
 
 
     val accountDAO: AccountDAO = Retrofit.Builder()
-        .baseUrl(App.preferences.apiURL)
+        .baseUrl(AppConfig.shared().apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(AccountDAO::class.java)
 
     val payDAO: PayDAO = Retrofit.Builder()
-        .baseUrl(App.preferences.apiURL)
+        .baseUrl(AppConfig.shared().apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(PayDAO::class.java)

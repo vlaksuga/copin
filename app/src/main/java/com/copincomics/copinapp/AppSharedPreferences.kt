@@ -17,18 +17,6 @@ class AppSharedPreferences(context: Context) {
     }
     private val preferences: SharedPreferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
 
-    var apiURL: String
-    get() = preferences.getString(API_URL, "https://api.copincomics.com")!!
-    set(value) {
-        preferences.edit().putString(API_URL, value).apply()
-    }
-
-    var entryURL: String
-    get() = preferences.getString(ENTRY_URL, "https://copincomics.com")!!
-    set(value) {
-        preferences.edit().putString(ENTRY_URL, value).apply()
-    }
-
     var accessToken: String
     get() = preferences.getString(ACCESS_TOKEN, "")!!
     set(value) {
@@ -40,16 +28,26 @@ class AppSharedPreferences(context: Context) {
     set(value) {
         preferences.edit().putString(REFRESH_TOKEN, value).apply()
     }
+}
 
-    var accountPKey: String?
-    get() = preferences.getString(ACCOUNT_PRIMARY_KEY, null)
-    set(value) {
-        preferences.edit().putString(ACCOUNT_PRIMARY_KEY, value).apply()
+class AppConfig private constructor() {
+
+    companion object {
+
+        @Volatile private var instance: AppConfig? = null
+
+        @JvmStatic fun shared(): AppConfig =
+            instance ?: synchronized(this) {
+                instance ?: AppConfig().also {
+                    instance = it
+                }
+            }
     }
 
-    var deviceID: String
-    get() = preferences.getString(DEVICE_ID, "")!!
-    set(value) {
-        preferences.edit().putString(DEVICE_ID, value).apply()
-    }
+    var apiURL : String = "https://sapi.copincomics.com/"
+    var entryURL: String = ""
+    var acccessToken : String = ""
+    var accountPKey: String = ""
+    var deviceID: String = ""
+
 }

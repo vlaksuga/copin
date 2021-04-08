@@ -6,7 +6,7 @@ import android.widget.Toast
 import com.android.billingclient.api.*
 import org.json.JSONArray
 
-open class WebBillingAgent(private val activity: MainWebViewActivity) : PurchasesUpdatedListener {
+open class WebBillingAgent(private val activity: WebViewActivity) : PurchasesUpdatedListener {
 
     companion object {
         const val TAG = "TAG : WebBillingAgent"
