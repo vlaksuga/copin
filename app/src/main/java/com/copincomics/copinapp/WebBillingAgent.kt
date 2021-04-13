@@ -160,10 +160,10 @@ open class WebBillingAgent(private val activity: WebViewActivity) : PurchasesUpd
         val productId = item.sku
         val flowParams = BillingFlowParams.newBuilder()
                 .setSkuDetails(item)
-                .setObfuscatedAccountId("${activity.accountPKey}:$productId")
+                .setObfuscatedAccountId("${App.config.accountPKey}:$productId")
                 .build()
         billingClient?.launchBillingFlow(activity, flowParams)
-        Log.d(TAG, "launchBillingFlow: accountPKey = ${activity.accountPKey}, pid = $productId")
+        Log.d(TAG, "launchBillingFlow: accountPKey = ${App.config.accountPKey}, pid = $productId")
     }
 
     fun endBillingConnection() {

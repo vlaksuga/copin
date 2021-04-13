@@ -43,7 +43,7 @@ open class MyJavascriptInterface (mContext: Context) {
     fun setLTokens(t: String, lt: String) {
         Log.d(WebViewActivity.TAG, "setLTokens: invoked!")
         App.preferences.refreshToken = lt
-        AppConfig.shared().acccessToken = t
+        AppConfig.shared().accessToken = t
         activity.setCookie()
     }
 

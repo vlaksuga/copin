@@ -11,8 +11,6 @@ import java.util.concurrent.TimeUnit
 
 class Retrofit : BaseActivity() {
 
-    val instanceSetting = AppConfig.shared()
-
     companion object {
         const val TAG = "TAG : ServiceRepo"
     }
@@ -43,8 +41,8 @@ class Retrofit : BaseActivity() {
         val httpClient = OkHttpClient.Builder()
             .callTimeout(1, TimeUnit.MINUTES)
             .connectTimeout(30, TimeUnit.SECONDS)
-        val t = instanceSetting.acccessToken
-        val c = AppConfig.shared().deviceID
+        val t = App.config.accessToken
+        val c = App.config.deviceID
         val d = "android"
         val v = App.currentVersion.toString()
         httpClient.addInterceptor(AuthInterceptor(t, c, d, v))
@@ -54,13 +52,13 @@ class Retrofit : BaseActivity() {
 
 
     val accountDAO: AccountDAO = Retrofit.Builder()
-        .baseUrl(AppConfig.shared().apiURL)
+        .baseUrl(App.config.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(AccountDAO::class.java)
 
     val payDAO: PayDAO = Retrofit.Builder()
-        .baseUrl(AppConfig.shared().apiURL)
+        .baseUrl(App.config.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
         .build().create(PayDAO::class.java)

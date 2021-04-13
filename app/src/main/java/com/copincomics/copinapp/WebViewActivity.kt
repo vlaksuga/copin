@@ -41,8 +41,6 @@ class WebViewActivity : BaseActivity() {
         const val GOOGLE_SIGN_IN = 9001 // account
     }
 
-    val config: AppConfig = AppConfig.shared()
-
     // Subscribe Topic State //
 //    lateinit var subTopicEvent: String
 //    lateinit var subTopicSeries: String
@@ -52,8 +50,8 @@ class WebViewActivity : BaseActivity() {
     lateinit var callbackManager: CallbackManager // account
 
     // Billing Service // pay
-    private val billingAgent = WebBillingAgent(this)
-    var currentUrl: String = config.entryURL // base
+    val billingAgent = WebBillingAgent(this)
+    var currentUrl: String = AppConfig.shared().entryURL // base
 
 
 
@@ -70,7 +68,7 @@ class WebViewActivity : BaseActivity() {
         callbackManager = CallbackManager.Factory.create() // account
 
         // Get Entry URL
-        entryURL = config.entryURL
+        entryURL = AppConfig.shared().entryURL
         currentUrl = entryURL
 
         // Get Subscribe Topic
@@ -173,8 +171,8 @@ class WebViewActivity : BaseActivity() {
 
     }
 
-    private fun payInit() {
-        if(config.accountPKey != "") {
+    fun payInit() {
+        if(App.config.accountPKey != "") {
             try {
                 billingAgent.buildBillingClient()
             } catch (e: Exception) {
@@ -217,8 +215,8 @@ class WebViewActivity : BaseActivity() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.apply {
             setAcceptCookie(true)
-            setCookie("copincomics.com", "copinandroid=${config.acccessToken}")
-            setCookie("live.copincomics.com", "copinandroid=${config.acccessToken}")
+            setCookie("copincomics.com", "copinandroid=${App.config.accessToken}")
+            setCookie("live.copincomics.com", "copinandroid=${App.config.accessToken}")
         }
     } // account
 
@@ -242,7 +240,7 @@ class WebViewActivity : BaseActivity() {
                     if (task.isSuccessful) {
                         val idToken = task.result.token
                         if (idToken != null) {
-                            retrofit.accountDAO.processLoginFirebase(idToken).enqueue(object :
+                            Retrofit().accountDAO.processLoginFirebase(idToken).enqueue(object :
                                 Callback<RetLogin> {
                                 override fun onResponse(
                                     call: Call<RetLogin>,
@@ -253,17 +251,14 @@ class WebViewActivity : BaseActivity() {
                                         response.body()?.let {
                                             val ret = it.body
                                             App.preferences.refreshToken = ret.t2
-                                            config.acccessToken = ret.token
-                                            config.accountPKey = ret.userinfo.accountpkey
+                                            App.config.accessToken = ret.token
+                                            App.config.accountPKey = ret.userinfo.accountpkey
 
                                             // Set Identity For Branch
-                                            if (config.accountPKey != "") {
-                                                val branch = Branch.getInstance(applicationContext)
-                                                branch.setIdentity(config.accountPKey)
-                                            }
+                                            setBranchIdentity()
                                         }
                                         dismissLoader()
-                                        val c = config.deviceID
+                                        val c = App.config.deviceID
                                         webView.loadUrl("javascript:loginWithFirebase('$idToken', '$c', 'android')")
                                     } else {
                                         Log.d(TAG, "onResponse: error : , ${response.body()!!.head.msg}")
@@ -334,7 +329,7 @@ class WebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-        retrofit.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        Retrofit().payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
@@ -411,7 +406,7 @@ class WebViewActivity : BaseActivity() {
 //        }
 //    } // base
 
-    private fun branchCustomEvent(eventName: String, params: String?) {
+    fun branchCustomEvent(eventName: String, params: String?) {
         if (params == null || params == "" || params == "undefined" || params == "{}") {
             val branch = Branch.getInstance()
             branch.userCompletedAction(eventName)
@@ -459,7 +454,7 @@ class WebViewActivity : BaseActivity() {
         return bundle
     } // log
 
-    private fun facebookCustomEvent(eventName: String, params: String?) {
+    fun facebookCustomEvent(eventName: String, params: String?) {
         val logger: AppEventsLogger = AppEventsLogger.newLogger(this)
         if (params == null || params == "" || params == "undefined" || params == "{}") {
             logger.logEvent(eventName)

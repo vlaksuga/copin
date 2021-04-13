@@ -14,6 +14,9 @@ import com.copincomics.copinapp.data.RetLogin
 import com.google.firebase.messaging.FirebaseMessaging
 import io.branch.referral.Branch
 import io.branch.referral.validators.IntegrationValidator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -22,33 +25,27 @@ class EntryActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : Entry"
+        const val DEFAULT_API_URL = "https://api.copincomics.com"
+        const val DEFAULT_ENTRY_URL = "https://copincomics.com"
     }
 
     private var link: String? = null
     private var toon: String? = null
 
-    private var subTopic = false
-
-    lateinit var config: AppConfig
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
-        config = AppConfig.shared()
+
+        // TODO : launch coroutine
 
         /* CHECK NETWORK CONNECTION */
-        if (networkConnection(this)) {
-            checkVersion()
+        if (checkNetworkConnection(this)) {
+            getVersionFromApi()
         } else {
-            val builder = AlertDialog.Builder(this)
-            builder.setMessage("Network Error")
-            builder.setPositiveButton("Confirm") { _, _ -> finish() }
-            builder.setCancelable(false)
-            builder.show()
+            showNetworkAlert()
+            return
         }
-
-
         /* INTENT EXTRA */
 //        val intent = intent
 //        if (intent.data != null && intent.data.toString().contains("toon://open/")) {
@@ -58,22 +55,32 @@ class EntryActivity : BaseActivity() {
 //        }
     }
 
+    private fun showNetworkAlert() {
+        // TODO : ABSTRACT ALL ALERT DIALOG
+        val builder = AlertDialog.Builder(this)
+        builder.apply {
+            setMessage("Network Error")
+            setPositiveButton("Confirm") { _, _ -> finish() }
+            setCancelable(false)
+            show()
+        }
+    }
+
     override fun onStart() {
         super.onStart()
         try {
             Branch.enableLogging()
             IntegrationValidator.validate(this)
             Branch.sessionBuilder(this)
-                .withCallback { referringParams, _ ->
-                    Log.d(
-                        TAG,
-                        "Branch Session Builder: $referringParams"
-                    )
-                }
-                .withData(this.intent.data)
-                .init()
+                    .withCallback { referringParams, _ ->
+                        Log.d(
+                                TAG,
+                                "Branch Session Builder: $referringParams"
+                        )
+                    }
+                    .withData(this.intent.data)
+                    .init()
         } catch (e: Exception) {
-
             Log.w(TAG, "onStart: Branch Init Fail", e)
         }
     }
@@ -82,20 +89,19 @@ class EntryActivity : BaseActivity() {
         super.onNewIntent(intent)
         try {
             setIntent(intent)
-
             Branch.sessionBuilder(this).withCallback { _, _ -> startActivity(intent) }.reInit()
         } catch (e: Exception) {
             Log.w(TAG, "onNewIntent: Branch ReInit Failed", e)
         }
     }
 
-    private fun networkConnection(activity: AppCompatActivity): Boolean {
+    private fun checkNetworkConnection(activity: AppCompatActivity): Boolean {
         val result: Boolean
         val connectivityManager =
-            activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkCapabilities = connectivityManager.activeNetwork ?: return false
         val activeNetwork =
-            connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+                connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
         result = when {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
@@ -104,130 +110,130 @@ class EntryActivity : BaseActivity() {
             else -> false
         }
         return result
+
     }
 
-    private fun checkVersion() {
+    private fun getVersionFromApi() {
         // TODO : TO MAP
         Log.d(TAG, "checkVersion: start")
         Retrofit().accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
             override fun onResponse(
-                call: Call<CheckVersion>,
-                response: Response<CheckVersion>
+                    call: Call<CheckVersion>,
+                    response: Response<CheckVersion>
             ) {
-                response.body()?.let { res ->
-                    var minVersion = res.body.ANDROIDMIN.toIntOrNull()
-                    var recentVersion = res.body.ANDROIDRECENT.toIntOrNull()
-
-                    // if min or recent can't convert to int
-                    if (minVersion == null) {
-                        minVersion = 1
-                    }
-                    if (recentVersion == null) {
-                        recentVersion = 99
-                    }
-
-                    val apiURL11: String = res.body.APIURL11
-                    val entryURL11: String = res.body.ENTRYURL11
-                    val defaultEntryURL = res.body.DEFAULTENTRYURL
-                    val defaultApiURL = res.body.DEFAULTAPIURL
-
-                    if (App.currentVersion < minVersion) {
-                        val builder = AlertDialog.Builder(this@EntryActivity)
-                        builder.setMessage("Confirm to upgrade version?")
-                            .setPositiveButton("Confirm") { _, _ ->
-                                startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
-                                    )
-                                )
-                                finish()
-                            }
-                            .show()
-
-                        // ENTRY FLOW STOPS HERE
-                    } else {
-                        if (App.currentVersion > recentVersion) {
-                            config.entryURL = defaultEntryURL
-                            config.apiURL = defaultEntryURL
-
-                            if (entryURL11.isNotBlank() or entryURL11.isNotEmpty()) {
-                                config.entryURL = entryURL11
-                            }
-
-                            if (apiURL11.isNotBlank() or apiURL11.isNotEmpty()) {
-                                config.apiURL = apiURL11
-                            }
-
-                        } else {
-                            config.entryURL = defaultEntryURL
-                            config.apiURL = defaultApiURL
-                        }
-                    }
-                    loginWithRefreshToken()
-                } ?: {
+                // validate response
+                if (response.body() == null) {
                     adaptHardCodedVersion()
-                }()
+                    loginWithRefreshToken()
+                    return
+                }
+
+                val res = response.body()!!
+
+                // put data
+                val minVersion = res.body.ANDROIDMIN.toIntOrNull() ?: 1
+                val recentVersion = res.body.ANDROIDRECENT.toIntOrNull() ?: 99
+                val apiURL11: String = res.body.APIURL11.ifEmpty { DEFAULT_API_URL }
+                val defaultApiURL = res.body.DEFAULTAPIURL.ifEmpty { DEFAULT_API_URL }
+                val entryURL11: String = res.body.ENTRYURL11.ifEmpty { DEFAULT_ENTRY_URL }
+                val defaultEntryURL = res.body.DEFAULTENTRYURL.ifEmpty { DEFAULT_ENTRY_URL }
+
+                // validateMinimumVersion
+                // we only need minVersion because currentVersion is already hard-coded
+                if (App.currentVersion < minVersion) {
+                    showWarningAlert()
+                    return
+                }
+
+                // validateRecentVersion
+                App.config.entryURL = if (App.currentVersion > recentVersion) entryURL11 else defaultEntryURL
+                App.config.apiURL = if (App.currentVersion > recentVersion) apiURL11  else defaultApiURL
+                loginWithRefreshToken()
             }
 
             override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
                 adaptHardCodedVersion()
+                loginWithRefreshToken()
             }
         })
     }
 
+    private fun showWarningAlert() {
+        // TODO : ABSTRACT ALERT DIALOG
+        val builder = AlertDialog.Builder(this@EntryActivity)
+        builder.setMessage("Confirm to upgrade version?")
+                .setPositiveButton("Confirm") { _, _ ->
+                    startActivity(
+                            Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
+                            )
+                    )
+                    finish()
+                }
+                .show()
+    }
+
     private fun adaptHardCodedVersion() {
-        config.entryURL = "https://copincomics.com"
-        config.apiURL = "https://api.copincomics.com"
-        loginWithRefreshToken()
+        App.config.entryURL = DEFAULT_ENTRY_URL
+        App.config.apiURL = DEFAULT_API_URL
     }
 
     private fun loginWithRefreshToken() {
         val refreshToken = App.preferences.refreshToken
-        if (refreshToken != "") {
-            Retrofit().accountDAO.processLoginByToken(lt = refreshToken).enqueue(object : Callback<RetLogin> {
-                override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
-                    response.body()?.let { res ->
-                        val head = res.head
-                        if (head.status != "error") {
-                            val ret = res.body
-                            App.preferences.refreshToken = ret.t2
-                            config.acccessToken = ret.token
-                            config.accountPKey = ret.userinfo.accountpkey
-                            if(config.accountPKey != "") {
-                                val branch = Branch.getInstance(applicationContext)
-                                branch.setIdentity(config.accountPKey)
-                            }
-                            updateDeviceId()
-                        } else {
-                            emptyAccountPreference()
-                        }
-                    }?:{
-                        emptyAccountPreference()
-                    }()
+
+        // validate refreshToken
+        if (refreshToken == "") {
+            emptyAccountData()
+            updateDeviceId()
+            return
+        }
+
+        Retrofit().accountDAO.processLoginByToken(lt = refreshToken).enqueue(object : Callback<RetLogin> {
+            override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
+
+                if(response.body() == null) {
+                    emptyAccountData()
+                    updateDeviceId()
+                    return
                 }
 
-                override fun onFailure(call: Call<RetLogin>, t: Throwable) {
-                    emptyAccountPreference()
+                val res = response.body()!!
+                val head = res.head
+                val body = res.body
+
+                if (head.status == "error") {
+                    emptyAccountData()
+                    updateDeviceId()
+                    return
                 }
-            })
-        } else {
-            emptyAccountPreference()
-        }
+
+                App.preferences.refreshToken = body.t2
+                App.config.accessToken = body.token
+                App.config.accountPKey = body.userinfo.accountpkey
+                setBranchIdentity()
+                updateDeviceId()
+            }
+
+            override fun onFailure(call: Call<RetLogin>, t: Throwable) {
+                emptyAccountData()
+                updateDeviceId()
+            }
+        })
+
     }
+
+
 
     private fun updateDeviceId() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            App.config.deviceID = ""
             if (task.isSuccessful) {
                 task.result?.let { token ->
-                    config.deviceID = token
-                    startMainActivity()
+                    App.config.deviceID = token
                 }
-            } else {
-                // TODO : CHECK EMPTY DEVICE ID FLOW
-                config.deviceID = ""
-                startMainActivity()
             }
+            startMainActivity()
         }
     }
 
@@ -268,16 +274,15 @@ class EntryActivity : BaseActivity() {
 //        }
 //    }
 
-    private fun emptyAccountPreference() {
+    private fun emptyAccountData() {
         App.preferences.refreshToken = ""
-        config.acccessToken = ""
-        config.accountPKey = ""
-        updateDeviceId()
+        App.config.accessToken = ""
+        App.config.accountPKey = ""
     }
 
     private fun startMainActivity() {
         val mainActivityIntent = Intent(this, WebViewActivity::class.java)
-        if(link != null) {
+        if (link != null) {
             intent.extras?.let { bundle ->
                 link = bundle.getString("link")
             }

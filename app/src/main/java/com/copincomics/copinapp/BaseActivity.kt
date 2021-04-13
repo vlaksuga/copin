@@ -18,6 +18,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.ktx.Firebase
+import io.branch.referral.Branch
 
 open class BaseActivity : AppCompatActivity() {
 
@@ -29,9 +30,9 @@ open class BaseActivity : AppCompatActivity() {
     lateinit var loadingDialog: AlertDialog
     lateinit var firebaseAnalytics: FirebaseAnalytics
     lateinit var webView: WebView // base
-    val retrofit = Retrofit()
+
     var entryURL: String = "https://stage.copincomics.com/"
-    val cm = getSystemService(ConnectivityManager::class.java)
+    lateinit var cm: ConnectivityManager
     // Network Callback
 
     fun setDialog() {
@@ -49,7 +50,15 @@ open class BaseActivity : AppCompatActivity() {
         loadingDialog.dismiss()
     }
 
+    fun setBranchIdentity() {
+        if (AppConfig.shared().accountPKey != "") {
+            val branch = Branch.getInstance(applicationContext)
+            branch.setIdentity(AppConfig.shared().accountPKey)
+        }
+    }
+
     fun registerNetworkCallback(networkCallback: NetworkCallback) {
+        cm = getSystemService(ConnectivityManager::class.java)
         val networkRequest = NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -61,6 +70,7 @@ open class BaseActivity : AppCompatActivity() {
     }
 
     fun unregisterNetworkCallback(networkCallback: NetworkCallback) {
+        cm = getSystemService(ConnectivityManager::class.java)
         cm.unregisterNetworkCallback(networkCallback)
         Log.d(TAG, "unRegisterNetworkCallback: unregistered")
     }
