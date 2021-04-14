@@ -1,16 +1,16 @@
-package com.copincomics.copinapp.dao
+package com.copincomics.copinapp.api
 
-import com.copincomics.copinapp.data.CheckVersion
+import com.copincomics.copinapp.data.Version
 import com.copincomics.copinapp.data.GetMe
 import com.copincomics.copinapp.data.RetLogin
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-interface AccountDAO {
+interface ApiService {
     @GET("a/checkVersion.json")
-    fun requestCheckVersion(
-    ): Call<CheckVersion>
+    fun getVersion(
+    ): Call<Version>
 
     @GET("a/processLoginByToken.json")
     fun processLoginByToken(

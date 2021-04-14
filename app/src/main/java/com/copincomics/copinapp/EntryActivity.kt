@@ -9,7 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.copincomics.copinapp.data.CheckVersion
+import com.copincomics.copinapp.data.Version
 import com.copincomics.copinapp.data.RetLogin
 import com.google.firebase.messaging.FirebaseMessaging
 import io.branch.referral.Branch
@@ -22,7 +22,7 @@ class EntryActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : Entry"
-        const val DEFAULT_API_URL = "https://api.copincomics.com"
+        const val DEFAULT_API_URL = "https://sapi.copincomics.com"
         const val DEFAULT_ENTRY_URL = "https://copincomics.com"
     }
 
@@ -120,10 +120,10 @@ class EntryActivity : BaseActivity() {
     private fun checkVersion() {
         // TODO : TO MAP
         Log.d(TAG, "checkVersion: start")
-        Retrofit().accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
+        Retrofit().accountDAO.getVersion().enqueue(object : Callback<Version> {
             override fun onResponse(
-                    call: Call<CheckVersion>,
-                    response: Response<CheckVersion>
+                    call: Call<Version>,
+                    response: Response<Version>
             ) {
                 // validate response
                 if (response.body() == null) {
@@ -153,12 +153,12 @@ class EntryActivity : BaseActivity() {
 
                 // validateRecentVersion
                 App.config.entryURL = if (App.currentVersion > recentVersion) entryURL11 else defaultEntryURL
-                App.config.apiURL = if (App.currentVersion > recentVersion) apiURL11  else defaultApiURL
+                App.config.apiURL = if (App.currentVersion > recentVersion) DEFAULT_API_URL  else defaultApiURL
                 Log.d(TAG, "checkVersion: end")
                 loginWithRefreshToken()
             }
 
-            override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
+            override fun onFailure(call: Call<Version>, t: Throwable) {
                 adaptHardCodedVersion()
                 loginWithRefreshToken()
             }

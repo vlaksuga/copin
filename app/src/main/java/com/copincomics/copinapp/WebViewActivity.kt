@@ -335,17 +335,48 @@ class WebViewActivity : BaseActivity() {
         })
     } // account
 
+    fun check(purchaseToken: String, sku: String,a:String) {
+
+        when (a) {
+            "1" -> { sendBackEnd(purchaseToken, sku) }
+            "2" -> {
+                billingAgent.consumePurchase(purchaseToken)
+                sendBackEnd(purchaseToken, sku)
+            }
+            else -> {
+                sendBackEnd("FERFFER", sku)
+            }
+        }
+
+
+
+    }
+
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-        Retrofit().payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        Retrofit().payDAO.confirmReal(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
-                    if (res.body.result == "OK") {
-                        Log.d(TAG, "onResponse: BackEnd Says OK")
-                        billingAgent.consumePurchase(purchaseToken)
-                    } else {
-                        Log.d(TAG, "onResponse: BackEnd Says Not OK")
-                        billingAgent.endBillingConnection()
+                    when (res.body.result) {
+                        "OK" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : OK")
+                            // billingAgent.consumePurchase(purchaseToken)
+                            check(purchaseToken, sku, "1")
+                        }
+                        "CONSUMED" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : Token already consumed")
+                            check(purchaseToken, sku, "3")
+                        }
+                        "OLDOK" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : Already OK")
+                            check(purchaseToken, sku, "2")
+
+                        }
+                        else -> {
+                            Log.d(TAG, "onResponse: result = ${res.body.result} ")
+                            Log.d(TAG, "onResponse: BackEnd Says Not OK")
+                            billingAgent.endBillingConnection()
+                        }
                     }
                     webView.loadUrl("javascript:payDone()")
                 }
@@ -353,6 +384,7 @@ class WebViewActivity : BaseActivity() {
 
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
                 Log.e(TAG, "onFailure: Confirm from backend fail", t)
+
             }
         })
     } // pay
@@ -362,11 +394,23 @@ class WebViewActivity : BaseActivity() {
         Retrofit().payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
-                    if (res.body.result == "OK") {
-                        Log.d(TAG, "onResponse: BackEnd Says OK")
-                        billingAgent.consumePurchaseRetry(purchaseToken)
-                    } else {
-                        Log.d(TAG, "onResponse: BackEnd Says Not OK")
+                    when (res.body.result) {
+                        "OK" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : OK")
+                            billingAgent.consumePurchaseRetry(purchaseToken)
+                        }
+                        "CONSUMED" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : Token already consumed")
+                            billingAgent.consumePurchaseRetry(purchaseToken)
+                        }
+                        "OLDOK" -> {
+                            Log.d(TAG, "onResponse: BackEnd Says : Already OK")
+                            billingAgent.consumePurchaseRetry(purchaseToken)
+                        }
+                        else -> {
+                            Log.d(TAG, "onResponse: BackEnd Says Not OK")
+                            billingAgent.endBillingConnection()
+                        }
                     }
                 }
             }

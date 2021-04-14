@@ -1,8 +1,8 @@
 package com.copincomics.copinapp
 
 import android.util.Log
-import com.copincomics.copinapp.dao.AccountDAO
-import com.copincomics.copinapp.dao.PayDAO
+import com.copincomics.copinapp.api.ApiService
+import com.copincomics.copinapp.api.PaymentService
 import okhttp3.*
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -51,15 +51,15 @@ class Retrofit : BaseActivity() {
     }
 
 
-    val accountDAO: AccountDAO = Retrofit.Builder()
+    val accountDAO: ApiService = Retrofit.Builder()
         .baseUrl(App.config.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
-        .build().create(AccountDAO::class.java)
+        .build().create(ApiService::class.java)
 
-    val payDAO: PayDAO = Retrofit.Builder()
+    val payDAO: PaymentService = Retrofit.Builder()
         .baseUrl(App.config.apiURL)
         .addConverterFactory(GsonConverterFactory.create())
         .client(okHttpclient())
-        .build().create(PayDAO::class.java)
+        .build().create(PaymentService::class.java)
 }
