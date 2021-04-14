@@ -236,49 +236,57 @@ class WebViewActivity : BaseActivity() {
     private fun loginAuthServerWithFirebaseUser(user: FirebaseUser) {
         try {
             user.getIdToken(true)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val idToken = task.result.token
-                        if (idToken != null) {
-                            Retrofit().accountDAO.processLoginFirebase(idToken).enqueue(object :
-                                Callback<RetLogin> {
-                                override fun onResponse(
-                                    call: Call<RetLogin>,
-                                    response: Response<RetLogin>
-                                ) {
-                                    if (response.body()?.head?.status != "error") {
-                                        Log.d(TAG, "onResponse: success")
-                                        response.body()?.let {
-                                            val ret = it.body
-                                            App.preferences.refreshToken = ret.t2
-                                            App.config.accessToken = ret.token
-                                            App.config.accountPKey = ret.userinfo.accountpkey
-
-                                            // Set Identity For Branch
-                                            setBranchIdentity()
-                                        }
-                                        dismissLoader()
-                                        val c = App.config.deviceID
-                                        webView.loadUrl("javascript:loginWithFirebase('$idToken', '$c', 'android')")
-                                    } else {
-                                        Log.d(TAG, "onResponse: error : , ${response.body()!!.head.msg}")
-                                    }
-
-                                }
-
-                                override fun onFailure(call: Call<RetLogin>, t: Throwable) {
-                                    Log.w(
-                                        TAG,
-                                        "onFailure: Auth Server Respond Fail",
-                                        t
-                                    )
-                                    dismissLoader()
-                                }
-                            })
-                        } else {
-                            Log.d(TAG, "updateUserInfo: Firebase Id Token Null")
-                        }
+                .addOnSuccessListener { task ->
+                    val idToken = task.token
+                    if (idToken.isNullOrBlank()) {
+                        // TODO : TOKEN IS INVALID
+                        return@addOnSuccessListener
                     }
+
+                    Retrofit().accountDAO.processLoginFirebase(idToken).enqueue(object :
+                        Callback<RetLogin> {
+                        override fun onResponse(
+                            call: Call<RetLogin>,
+                            response: Response<RetLogin>
+                        ) {
+                            if (!response.isSuccessful) {
+                                // TODO : ERROR FOR USER FLOW
+                                Log.d(TAG, "onResponse: error ")
+                                return
+                            }
+
+                            if (response.body() == null) {
+                                // TODO : ERROR FOR USER FLOW
+                                Log.d(TAG, "onResponse: error ")
+                                return
+                            }
+
+                            if (response.body()?.head?.status == "error") {
+                                // TODO : ERROR FOR USER FLOW
+                                Log.d(TAG, "onResponse: error ")
+                                return
+                            }
+
+                            val ret = response.body()!!.body
+                            App.preferences.refreshToken = ret.t2
+                            App.config.accessToken = ret.token
+                            App.config.accountPKey = ret.userinfo.accountpkey
+
+                            // Set Identity For Branch
+                            setBranchIdentity()
+                            dismissLoader()
+                            webView.loadUrl("javascript:loginWithFirebase('$idToken', '${App.config.deviceID}', 'android')")
+                        }
+
+                        override fun onFailure(call: Call<RetLogin>, t: Throwable) {
+                            Log.w(
+                                TAG,
+                                "onFailure: Auth Server Respond Fail",
+                                t
+                            )
+                            dismissLoader()
+                        }
+                    })
                 }
 
         } catch (e: Exception) {

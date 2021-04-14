@@ -14,9 +14,6 @@ import com.copincomics.copinapp.data.RetLogin
 import com.google.firebase.messaging.FirebaseMessaging
 import io.branch.referral.Branch
 import io.branch.referral.validators.IntegrationValidator
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -37,30 +34,37 @@ class EntryActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
 
-        // TODO : launch coroutine
-
         /* CHECK NETWORK CONNECTION */
-        if (checkNetworkConnection(this)) {
-            getVersionFromApi()
-        } else {
-            showNetworkAlert()
+        if (!checkNetworkConnection(this)) {
+            showCustomAlert("net")
             return
         }
-        /* INTENT EXTRA */
-//        val intent = intent
-//        if (intent.data != null && intent.data.toString().contains("toon://open/")) {
-//            // Deep link : scheme toon://
-//            toon = intent.data.toString().replace("toon://open/", "")
-//            Log.d(TAG, "intent extra toon = $toon")
-//        }
+        checkVersion()
     }
 
-    private fun showNetworkAlert() {
-        // TODO : ABSTRACT ALL ALERT DIALOG
+    private fun showCustomAlert(case: String) {
+        var message = ""
+        var buttonText = ""
+        var action: () -> Unit = {}
+        when (case) {
+            "net" -> {
+                message = "Network Error"
+                buttonText = "Confirm"
+                action = { finish() }
+            }
+            "update" -> {
+                message = "Confirm to upgrade version?"
+                buttonText = "Confirm"
+                action = { startActivity(Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")))
+                    finish() }
+            }
+        }
+
         val builder = AlertDialog.Builder(this)
         builder.apply {
-            setMessage("Network Error")
-            setPositiveButton("Confirm") { _, _ -> finish() }
+            setMessage(message)
+            setPositiveButton(buttonText) { _, _-> action() }
             setCancelable(false)
             show()
         }
@@ -113,7 +117,7 @@ class EntryActivity : BaseActivity() {
 
     }
 
-    private fun getVersionFromApi() {
+    private fun checkVersion() {
         // TODO : TO MAP
         Log.d(TAG, "checkVersion: start")
         Retrofit().accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
@@ -140,14 +144,17 @@ class EntryActivity : BaseActivity() {
 
                 // validateMinimumVersion
                 // we only need minVersion because currentVersion is already hard-coded
+
                 if (App.currentVersion < minVersion) {
-                    showWarningAlert()
+                    showCustomAlert("update")
+                    loginWithRefreshToken()
                     return
                 }
 
                 // validateRecentVersion
                 App.config.entryURL = if (App.currentVersion > recentVersion) entryURL11 else defaultEntryURL
                 App.config.apiURL = if (App.currentVersion > recentVersion) apiURL11  else defaultApiURL
+                Log.d(TAG, "checkVersion: end")
                 loginWithRefreshToken()
             }
 
@@ -158,34 +165,20 @@ class EntryActivity : BaseActivity() {
         })
     }
 
-    private fun showWarningAlert() {
-        // TODO : ABSTRACT ALERT DIALOG
-        val builder = AlertDialog.Builder(this@EntryActivity)
-        builder.setMessage("Confirm to upgrade version?")
-                .setPositiveButton("Confirm") { _, _ ->
-                    startActivity(
-                            Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")
-                            )
-                    )
-                    finish()
-                }
-                .show()
-    }
-
     private fun adaptHardCodedVersion() {
         App.config.entryURL = DEFAULT_ENTRY_URL
         App.config.apiURL = DEFAULT_API_URL
     }
 
     private fun loginWithRefreshToken() {
+        Log.d(TAG, "loginWithRefreshToken: start ")
         val refreshToken = App.preferences.refreshToken
 
         // validate refreshToken
         if (refreshToken == "") {
             emptyAccountData()
             updateDeviceId()
+            Log.d(TAG, "loginWithRefreshToken: end")
             return
         }
 
@@ -213,11 +206,13 @@ class EntryActivity : BaseActivity() {
                 App.config.accountPKey = body.userinfo.accountpkey
                 setBranchIdentity()
                 updateDeviceId()
+                Log.d(TAG, "loginWithRefreshToken: end ")
             }
 
             override fun onFailure(call: Call<RetLogin>, t: Throwable) {
                 emptyAccountData()
                 updateDeviceId()
+                Log.d(TAG, "loginWithRefreshToken: end ")
             }
         })
 

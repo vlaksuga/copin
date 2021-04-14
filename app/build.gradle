@@ -82,4 +82,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-appindexing:19.1.0'
     implementation 'com.google.android.gms:play-services-ads-identifier:17.0.0'
 
+    // coroutine
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.3'
+
 }
