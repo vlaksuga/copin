@@ -243,7 +243,7 @@ class WebViewActivity : BaseActivity() {
                         return@addOnSuccessListener
                     }
 
-                    Retrofit().accountDAO.processLoginFirebase(idToken).enqueue(object :
+                    Retrofit().buildApiService().processLoginFirebase(idToken).enqueue(object :
                         Callback<RetLogin> {
                         override fun onResponse(
                             call: Call<RetLogin>,
@@ -354,7 +354,7 @@ class WebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-        Retrofit().payDAO.confirmReal(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        Retrofit().buildPaymentService().confirmReal(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     when (res.body.result) {
@@ -391,7 +391,7 @@ class WebViewActivity : BaseActivity() {
 
     fun sendBackEndForCheckUnconsumed(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEndForCheckUnconsumed: invoked")
-        Retrofit().payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        Retrofit().buildPaymentService().confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     when (res.body.result) {

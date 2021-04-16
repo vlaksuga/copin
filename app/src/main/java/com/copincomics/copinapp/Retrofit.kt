@@ -50,16 +50,20 @@ class Retrofit : BaseActivity() {
         return httpClient.build()
     }
 
+    fun buildApiService(): ApiService {
+        return Retrofit.Builder()
+                .baseUrl(App.config.apiURL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpclient())
+                .build().create(ApiService::class.java)
+    }
 
-    val accountDAO: ApiService = Retrofit.Builder()
-        .baseUrl(App.config.apiURL)
-        .addConverterFactory(GsonConverterFactory.create())
-        .client(okHttpclient())
-        .build().create(ApiService::class.java)
+    fun buildPaymentService(): PaymentService {
+        return Retrofit.Builder()
+                .baseUrl(App.config.apiURL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpclient())
+                .build().create(PaymentService::class.java)
 
-    val payDAO: PaymentService = Retrofit.Builder()
-        .baseUrl(App.config.apiURL)
-        .addConverterFactory(GsonConverterFactory.create())
-        .client(okHttpclient())
-        .build().create(PaymentService::class.java)
+    }
 }

@@ -120,7 +120,7 @@ class EntryActivity : BaseActivity() {
     private fun checkVersion() {
         // TODO : TO MAP
         Log.d(TAG, "checkVersion: start")
-        Retrofit().accountDAO.getVersion().enqueue(object : Callback<Version> {
+        Retrofit().buildApiService().getVersion().enqueue(object : Callback<Version> {
             override fun onResponse(
                     call: Call<Version>,
                     response: Response<Version>
@@ -182,7 +182,7 @@ class EntryActivity : BaseActivity() {
             return
         }
 
-        Retrofit().accountDAO.processLoginByToken(lt = refreshToken).enqueue(object : Callback<RetLogin> {
+        Retrofit().buildApiService().processLoginByToken(lt = refreshToken).enqueue(object : Callback<RetLogin> {
             override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
 
                 if(response.body() == null) {
