@@ -32,6 +32,7 @@ class MyFirebaseMessageService : FirebaseMessagingService() {
         notificationManager.createNotificationChannel(commonChannel)
         Log.d(TAG, "createNotificationChannel: Created")
 
+        // TODO : 엔트리 2번 생기는 문제 해결하기
         val intent = Intent(applicationContext, EntryActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         if(msg.data["link"] != null) {

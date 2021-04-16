@@ -254,7 +254,7 @@ open class MainWebViewActivity : BaseActivity() {
                             val idToken = task.result.token
                             Log.d(TAG, "loginAuthServerWithFirebaseUser: Firebase Id Token : $idToken")
                             if (idToken != null) {
-                                repo.accountDAO.processLoginFirebase(idToken).enqueue(object :
+                                repo.getAccountDao().processLoginFirebase(idToken).enqueue(object :
                                         Callback<RetLogin> {
                                     override fun onResponse(
                                             call: Call<RetLogin>,
@@ -264,9 +264,11 @@ open class MainWebViewActivity : BaseActivity() {
                                             Log.d(TAG, "onResponse: success")
                                             response.body()?.let {
                                                 val ret = it.body
-                                                putAppPref("lt", ret.t2)
-                                                putAppPref("t", ret.token)
-                                                putAppPref("accountPKey", ret.userinfo.accountpkey)
+                                                val pref = sharedPreferences.edit()
+                                                pref.putString("lt", ret.t2)
+                                                pref.putString("t", ret.token)
+                                                pref.putString("accountPKey", ret.userinfo.accountpkey)
+                                                pref.commit()
 
                                                 // Set Identity For Branch
                                                 accountPKey = ret.userinfo.accountpkey
@@ -349,7 +351,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     fun sendBackEnd(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEnd: invoked")
-        repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        repo.getPayDao().confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
@@ -371,7 +373,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     fun sendBackEndForCheckUnconsumed(purchaseToken: String, sku: String) {
         Log.d(TAG, "sendBackEndForCheckUnconsumed: invoked")
-        repo.payDAO.confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
+        repo.getPayDao().confirm(purchaseToken, sku).enqueue(object : Callback<Confirm> {
             override fun onResponse(call: Call<Confirm>, response: Response<Confirm>) {
                 response.body()?.let { res ->
                     if (res.body.result == "OK") {
@@ -403,7 +405,9 @@ open class MainWebViewActivity : BaseActivity() {
         if (getAppPref(topic) == "Y") {
             FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
                     .addOnSuccessListener {
-                        putAppPref(topic, "")
+                        val pref = sharedPreferences.edit()
+                        pref.putString(topic, "")
+                        pref.commit()
                         Toast.makeText(this, "$topic notification unsubscribed", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
                         // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "N"
@@ -415,7 +419,9 @@ open class MainWebViewActivity : BaseActivity() {
         } else {
             FirebaseMessaging.getInstance().subscribeToTopic(topic)
                     .addOnSuccessListener {
-                        putAppPref(topic, "Y")
+                        val pref = sharedPreferences.edit()
+                        pref.putString(topic, "Y")
+                        pref.commit()
                         Toast.makeText(this, "$topic notification subscribed", Toast.LENGTH_SHORT).show()
                         Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
                         // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "Y"
@@ -621,8 +627,10 @@ open class MainWebViewActivity : BaseActivity() {
         @JavascriptInterface
         fun setLTokens(t: String, lt: String) {
             Log.d(TAG, "setLTokens: invoked")
-            putAppPref("lt", lt)
-            putAppPref("t", t)
+            val pref = sharedPreferences.edit()
+            pref.putString("lt", lt)
+            pref.putString("t", t)
+            pref.commit()
             setCookie()
         }
 

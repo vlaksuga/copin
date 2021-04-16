@@ -12,12 +12,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         const val TAG = "TAG : WebBillingAgent"
     }
 
-    private var productDetailList: MutableList<SkuDetails>? = null
     private val productIdsList = arrayListOf("c10", "c30", "c100", "c500", "c1000")
-    private val bonusList = arrayListOf("0", "10", "35", "200", "440")
-    private val coinList = arrayListOf("10", "30", "100", "500", "1000")
-    private val bestTagList = arrayListOf("", "", "", "Y", "")
-    private var jsonData: JSONArray? = null
     var dataSorted = HashMap<String, SkuDetails>()
 
     var billingClient: BillingClient? = null
@@ -160,10 +155,10 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         val productId = item.sku
         val flowParams = BillingFlowParams.newBuilder()
                 .setSkuDetails(item)
-                .setObfuscatedAccountId("${activity.accountPKey}:$productId")
+                .setObfuscatedAccountId("${activity.getAppPref("accountPKey")}:$productId")
                 .build()
         billingClient?.launchBillingFlow(activity, flowParams)
-        Log.d(TAG, "launchBillingFlow: accountPKey = ${activity.accountPKey}, pid = $productId")
+        Log.d(TAG, "launchBillingFlow: accountPKey = ${activity.getAppPref("accountPKey")}, pid = $productId")
     }
 
     fun endBillingConnection() {

@@ -40,7 +40,9 @@ class EntryActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
         init()
-        putAppPref("a", "https://sapi.copincomics.com")
+        val pref = sharedPreferences.edit()
+        pref.putString("a", "https://sapi.copincomics.com")
+        pref.commit()
 
 
         /* INTENT EXTRA */
@@ -124,7 +126,7 @@ class EntryActivity : BaseActivity() {
 
     private fun checkVersion() {
         Log.d(TAG, "checkVersion: start")
-        repo.accountDAO.requestCheckVersion().enqueue(object : Callback<CheckVersion> {
+        repo.getAccountDao().requestCheckVersion().enqueue(object : Callback<CheckVersion> {
             override fun onResponse(
                 call: Call<CheckVersion>,
                 response: Response<CheckVersion>
@@ -166,22 +168,26 @@ class EntryActivity : BaseActivity() {
                         if (curVersion > recentVersion) {
                             Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
                             Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
-                            putAppPref("e", defaultEntryURL)
-                            putAppPref("a", defaultApiURL)
+                            val pref = sharedPreferences.edit()
+                            pref.putString("e", defaultEntryURL)
+                            pref.putString("a", defaultApiURL)
 
                             if (entryURL11.isNotBlank() or entryURL11.isNotEmpty()) {
-                                putAppPref("e", entryURL11)
+                                pref.putString("e", entryURL11)
                             }
 
                             if (apiURL11.isNotBlank() or apiURL11.isNotEmpty()) {
-                                putAppPref("a", apiURL11)
+                                pref.putString("a", apiURL11)
                             } else {
                                 Log.d(TAG, "onResponse: defaultEntry")
                             }
+                            pref.commit()
 
                         } else {
-                            putAppPref("e", defaultEntryURL)
-                            putAppPref("a", defaultApiURL)
+                            val pref = sharedPreferences.edit()
+                            pref.putString("e", defaultEntryURL)
+                            pref.putString("a", defaultApiURL)
+                            pref.commit()
                             Log.d(TAG, "onResponse: defaultEntryURL = $defaultEntryURL")
                             Log.d(TAG, "onResponse: defaultApiURL = $defaultApiURL")
                             Log.d(TAG, "onResponse: recentVersion adapted")
@@ -193,8 +199,10 @@ class EntryActivity : BaseActivity() {
                     checkLogin()
                 } ?: {
                     Log.d(TAG, "onResponse: here??")
-                    putAppPref("e", "https://copincomics.com")
-                    putAppPref("a", "https://api.copincomics.com")
+                    val pref = sharedPreferences.edit()
+                    pref.putString("e", "https://copincomics.com")
+                    pref.putString("a", "https://api.copincomics.com")
+                    pref.commit()
                     checkVersion = true
                     Log.d(TAG, "checkVersion: end")
                     checkLogin()
@@ -202,10 +210,13 @@ class EntryActivity : BaseActivity() {
             }
 
             override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
+
                 Log.w(TAG, "onFailure: check version error", t)
                 Log.d(TAG, "onFailure: start Default version mode")
-                putAppPref("e", "https://copincomics.com")
-                putAppPref("a", "https://api.copincomics.com")
+                val pref = sharedPreferences.edit()
+                pref.putString("e", "https://copincomics.com")
+                pref.putString("a", "https://api.copincomics.com")
+                pref.commit()
                 checkVersion = true
                 Log.d(TAG, "checkVersion: end")
                 checkLogin()
@@ -218,16 +229,18 @@ class EntryActivity : BaseActivity() {
         val lt = getAppPref("lt")
         if (lt != "") {
             Log.d(TAG, "checkLogin: lt is not empty")
-            repo.accountDAO.processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
+            repo.getAccountDao().processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
                 override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
                     response.body()?.let { res ->
                         val head = res.head
                         if (head.status != "error") {
                             val ret = res.body
-                            putAppPref("lt", ret.t2)
-                            putAppPref("t", ret.token)
-                            putAppPref("nick", ret.userinfo.nick)
-                            putAppPref("accountPKey", ret.userinfo.accountpkey)
+                            val pref = sharedPreferences.edit()
+                            pref.putString("lt", ret.t2)
+                            pref.putString("t", ret.token)
+                            pref.putString("nick", ret.userinfo.nick)
+                            pref.putString("accountPKey", ret.userinfo.accountpkey)
+                            pref.commit()
                             Log.d(TAG, "onResponse: Auth Login Token = ${ret.t2}")
                             Log.d(TAG, "onResponse: Access Token = ${ret.token}")
                             Log.d(
@@ -267,7 +280,9 @@ class EntryActivity : BaseActivity() {
         fcm.token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 task.result?.let {
-                    putAppPref("deviceId", it)
+                    val pref = sharedPreferences.edit()
+                    pref.putString("deviceId", it)
+                    pref.commit()
                     Log.d(TAG, "updateDeviceId: firebase instance id : $it")
                     Log.d(TAG, "updateDeviceId: in pref ${getAppPref("deviceId")}")
                     updateDeviceId = true
@@ -275,7 +290,9 @@ class EntryActivity : BaseActivity() {
                     subscribeInit()
                 }
             } else {
-                putAppPref("deviceId", "fail_to_get_FCM_instance_token")
+                val pref = sharedPreferences.edit()
+                pref.putString("deviceId", "")
+                pref.commit()
                 Log.d(TAG, "updateDeviceId: firebase instance id : Fail")
                 updateDeviceId = true
                 Log.d(TAG, "updateDeviceId: end")
@@ -291,23 +308,31 @@ class EntryActivity : BaseActivity() {
             Log.d(TAG, "subscribeInit: invoked")
             fm.subscribeToTopic(topicList[0]).addOnCompleteListener { task0 ->
                 if(task0.isSuccessful) {
+                    val pref = sharedPreferences.edit()
                     Log.d(TAG, "subscribeInit: ${topicList[0]} subscribed")
-                    putAppPref(topicList[0], "Y")
+                    pref.putString(topicList[0], "Y")
+                    pref.commit()
                     Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[0])}")
                 }
                 fm.subscribeToTopic(topicList[1]).addOnCompleteListener { task1 ->
                     if(task1.isSuccessful) {
                         Log.d(TAG, "subscribeInit: ${topicList[1]} subscribed")
-                        putAppPref(topicList[1], "Y")
+                        val pref = sharedPreferences.edit()
+                        pref.putString(topicList[1], "Y")
+                        pref.commit()
                         Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[1])}")
                     }
                     fm.subscribeToTopic(topicList[2]).addOnCompleteListener { task2 ->
                         if(task2.isSuccessful) {
                             Log.d(TAG, "subscribeInit: ${topicList[2]} subscribed")
-                            putAppPref(topicList[2], "Y")
+                            val pref = sharedPreferences.edit()
+                            pref.putString(topicList[2], "Y")
+                            pref.commit()
                             Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[2])}")
                         }
-                        putAppPref("subInit", "Y")
+                        val pref = sharedPreferences.edit()
+                        pref.putString("subInit", "Y")
+                        pref.commit()
                         subTopic = true
                         Log.d(TAG, "subscribeInit: end")
                         startMainActivity()
@@ -323,10 +348,11 @@ class EntryActivity : BaseActivity() {
 
     private fun emptyAccountPreference() {
         Log.d(TAG, "emptyAccountPreference: empty")
-        putAppPref("lt", "")
-        putAppPref("t", "")
-        putAppPref("nick", "")
-        putAppPref("accountPKey", "")
+        val pref = sharedPreferences.edit()
+        pref.putString("lt", "")
+        pref.putString("t", "")
+        pref.putString("accountPKey", "")
+        pref.commit()
     }
 
     private fun startMainActivity() {

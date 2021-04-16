@@ -52,16 +52,31 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
         return httpClient.build()
     }
 
+    fun getAccountDao(): AccountDAO {
+        return Retrofit.Builder()
+                .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpclient())
+                .build().create(AccountDAO::class.java)
+    }
 
-    val accountDAO: AccountDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
-        .addConverterFactory(GsonConverterFactory.create())
-        .client(okHttpclient())
-        .build().create(AccountDAO::class.java)
+    fun getPayDao() : PayDAO {
+        return Retrofit.Builder()
+                .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpclient())
+                .build().create(PayDAO::class.java)
+    }
 
-    val payDAO: PayDAO = Retrofit.Builder()
-        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
-        .addConverterFactory(GsonConverterFactory.create())
-        .client(okHttpclient())
-        .build().create(PayDAO::class.java)
+//    val accountDAO: AccountDAO = Retrofit.Builder()
+//        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+//        .addConverterFactory(GsonConverterFactory.create())
+//        .client(okHttpclient())
+//        .build().create(AccountDAO::class.java)
+//
+//    val payDAO: PayDAO = Retrofit.Builder()
+//        .baseUrl(pref.getString("a", DEFAULT_API_URL)!!)
+//        .addConverterFactory(GsonConverterFactory.create())
+//        .client(okHttpclient())
+//        .build().create(PayDAO::class.java)
 }

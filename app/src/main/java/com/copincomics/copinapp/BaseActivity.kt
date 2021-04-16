@@ -40,12 +40,12 @@ open class BaseActivity : AppCompatActivity() {
         loadingDialog = builder.create()
     }
 
-    fun putAppPref(key: String, value: String) {
-        with(sharedPreferences.edit()) {
-            putString(key, value)
-            commit()
-        }
-    }
+//    fun putAppPref(key: String, value: String) {
+//        with(sharedPreferences.edit()) {
+//            putString(key, value)
+//            commit()
+//        }
+//    }
 
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!
