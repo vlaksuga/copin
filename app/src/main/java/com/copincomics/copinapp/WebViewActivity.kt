@@ -4,27 +4,20 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Message
+import android.util.EventLog
 import android.util.Log
 import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.copincomics.copinapp.data.Confirm
-import com.copincomics.copinapp.data.RetLogin
+import com.copincomics.copinapp.util.EventTracker
+import com.copincomics.copinapp.util.SocialLoginHandler
 import com.facebook.CallbackManager
-import com.facebook.FacebookCallback
-import com.facebook.FacebookException
 import com.facebook.appevents.AppEventsLogger
-import com.facebook.login.LoginManager
-import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.tasks.Task
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.auth.*
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import io.branch.referral.Branch
 import io.branch.referral.util.BRANCH_STANDARD_EVENT
 import io.branch.referral.util.BranchEvent
@@ -38,22 +31,17 @@ class WebViewActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : WebViewActivity"
-        const val GOOGLE_SIGN_IN = 9001 // account
+
     }
 
-    // Subscribe Topic State //
-//    lateinit var subTopicEvent: String
-//    lateinit var subTopicSeries: String
-
-    // Firebase Auth
-    lateinit var googleSignInClient: GoogleSignInClient // account
-    lateinit var callbackManager: CallbackManager // account
+    lateinit var facebookCallbackManager: CallbackManager // account
 
     // Billing Service // pay
     val billingAgent = WebBillingAgent(this)
-    var currentUrl: String = AppConfig.shared().entryURL // base
+    var currentUrl: String = App.config.entryURL // base
 
-
+    lateinit var loginHandler: SocialLoginHandler
+    lateinit var eventTracker: EventTracker
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,18 +52,14 @@ class WebViewActivity : BaseActivity() {
         setDialog()
         showLoader()
 
-        auth = Firebase.auth // base
-        callbackManager = CallbackManager.Factory.create() // account
+        loginHandler = SocialLoginHandler(this)
+
+        facebookCallbackManager = CallbackManager.Factory.create()
 
         // Get Entry URL
-        entryURL = AppConfig.shared().entryURL
+        entryURL = App.config.entryURL
         currentUrl = entryURL
 
-        // Get Subscribe Topic
-//        subTopicEvent = getAppPref("Event")
-//        subTopicSeries = getAppPref("Series")
-//        Log.d(TAG, "onCreate: subTopicEvent = $subTopicEvent")
-//        Log.d(TAG, "onCreate: subTopicSeries = $subTopicSeries")
 
         val entryIntent = intent // main
 
@@ -161,7 +145,6 @@ class WebViewActivity : BaseActivity() {
             }
         } // base
         webView.addJavascriptInterface(MyJavascriptInterface(this), "AndroidCopin") // base
-
         setCookie() // main
     }
 
@@ -187,30 +170,6 @@ class WebViewActivity : BaseActivity() {
         }
     } // pay
 
-    fun signInWithProvider(providerId: String) {
-        val provider: OAuthProvider.Builder = OAuthProvider.newBuilder(providerId)
-        val pendingResultTask: Task<AuthResult>? = auth.pendingAuthResult
-        if (auth.pendingAuthResult != null) {
-            pendingResultTask!!
-                .addOnSuccessListener { authResult ->
-                    authResult.user?.let { loginAuthServerWithFirebaseUser(it) }
-                    Toast.makeText(this, "Auth Success", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener {
-                    Log.w(TAG, "signInWithProvider: Pending Result Fail", it)
-                }
-        } else {
-            auth.startActivityForSignInWithProvider(this, provider.build())
-                .addOnSuccessListener { authResult ->
-                    authResult.user?.let { loginAuthServerWithFirebaseUser(it) }
-                    Toast.makeText(this, "Auth Success", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Auth Failed", Toast.LENGTH_SHORT).show()
-                }
-        }
-    } // account
-
     fun setCookie() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.apply {
@@ -218,122 +177,11 @@ class WebViewActivity : BaseActivity() {
             setCookie("copincomics.com", "copinandroid=${App.config.accessToken}")
             setCookie("live.copincomics.com", "copinandroid=${App.config.accessToken}")
         }
-    } // account
-
-    private fun signInWithCredential(credential: AuthCredential) {
-        showLoader()
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    user?.let {
-                        loginAuthServerWithFirebaseUser(it)
-                    }
-                }
-            }
-    } // account
-
-    private fun loginAuthServerWithFirebaseUser(user: FirebaseUser) {
-        try {
-            user.getIdToken(true)
-                .addOnSuccessListener { task ->
-                    val idToken = task.token
-                    if (idToken.isNullOrBlank()) {
-                        // TODO : TOKEN IS INVALID
-                        return@addOnSuccessListener
-                    }
-
-                    Retrofit().buildApiService().processLoginFirebase(idToken).enqueue(object :
-                        Callback<RetLogin> {
-                        override fun onResponse(
-                            call: Call<RetLogin>,
-                            response: Response<RetLogin>
-                        ) {
-                            if (!response.isSuccessful) {
-                                // TODO : ERROR FOR USER FLOW
-                                Log.d(TAG, "onResponse: error ")
-                                return
-                            }
-
-                            if (response.body() == null) {
-                                // TODO : ERROR FOR USER FLOW
-                                Log.d(TAG, "onResponse: error ")
-                                return
-                            }
-
-                            if (response.body()?.head?.status == "error") {
-                                // TODO : ERROR FOR USER FLOW
-                                Log.d(TAG, "onResponse: error ")
-                                return
-                            }
-
-                            val ret = response.body()!!.body
-                            App.preferences.refreshToken = ret.t2
-                            App.config.accessToken = ret.token
-                            App.config.accountPKey = ret.userinfo.accountpkey
-
-                            // Set Identity For Branch
-                            setBranchIdentity(ret)
-                            dismissLoader()
-                            webView.loadUrl("javascript:loginWithFirebase('$idToken', '${App.config.deviceID}', 'android')")
-                        }
-
-                        override fun onFailure(call: Call<RetLogin>, t: Throwable) {
-                            Log.w(
-                                TAG,
-                                "onFailure: Auth Server Respond Fail",
-                                t
-                            )
-                            dismissLoader()
-                        }
-                    })
-                }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "loginAuthServerWithFirebaseUser: Fail", e)
-        }
-    } // account
+    } // base
 
     private fun restartToBaseUrl() {
         webView.loadUrl(entryURL)
     } // base
-
-    fun googleSignIn() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
-        val signInIntent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, GOOGLE_SIGN_IN)
-    } // account
-
-    fun facebookLoginInApp() {
-        val loginManager = LoginManager.getInstance()
-        loginManager.logInWithReadPermissions(this, arrayListOf("email", "public_profile"))
-        loginManager.registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
-            override fun onSuccess(result: LoginResult) {
-                Log.d(TAG, "facebook: onSuccess")
-                val credential = FacebookAuthProvider.getCredential(result.accessToken.token)
-                signInWithCredential(credential)
-            }
-
-            override fun onCancel() {
-                Log.d(TAG, "facebook: onCancel")
-                Toast.makeText(applicationContext, "Authentication Failed.", Toast.LENGTH_SHORT)
-                    .show()
-            }
-
-            override fun onError(error: FacebookException) {
-                Log.d(TAG, "facebook: onError", error)
-                Toast.makeText(
-                    applicationContext,
-                    "Authentication Failed. ${error.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        })
-    } // account
 
     fun check(purchaseToken: String, sku: String,a:String) {
 
@@ -360,16 +208,18 @@ class WebViewActivity : BaseActivity() {
                     when (res.body.result) {
                         "OK" -> {
                             Log.d(TAG, "onResponse: BackEnd Says : OK")
-                            // billingAgent.consumePurchase(purchaseToken)
-                            check(purchaseToken, sku, "1")
+                            billingAgent.consumePurchase(purchaseToken)
+//                            check(purchaseToken, sku, "1")
                         }
                         "CONSUMED" -> {
                             Log.d(TAG, "onResponse: BackEnd Says : Token already consumed")
-                            check(purchaseToken, sku, "3")
+                            billingAgent.consumePurchase(purchaseToken)
+//                            check(purchaseToken, sku, "3")
                         }
                         "OLDOK" -> {
                             Log.d(TAG, "onResponse: BackEnd Says : Already OK")
-                            check(purchaseToken, sku, "2")
+                            billingAgent.consumePurchase(purchaseToken)
+//                            check(purchaseToken, sku, "2")
 
                         }
                         else -> {
@@ -421,43 +271,6 @@ class WebViewActivity : BaseActivity() {
         })
     } // pay
 
-//    fun onSettingPageStart() {
-//        Log.d(TAG, "onSettingPageStart: invoked")
-//        val event = getAppPref("Event")
-//        val series = getAppPref("Series")
-//        Log.d(TAG, "onSettingPageStart: Event = $event, Series = $series")
-//        Toast.makeText(this, "Setting Page", Toast.LENGTH_SHORT).show()
-//        // TODO : webView.loadUrl("javascript:sendSubState('$event', '$series')")
-//    }
-
-//    private fun toggleSubTopic(topic: String) {
-//        Log.d(TAG, "toggleSubTopic: invoked")
-//        if (getAppPref(topic) == "Y") {
-//            FirebaseMessaging.getInstance().unsubscribeFromTopic(topic)
-//                .addOnSuccessListener {
-//                    putAppPref(topic, "")
-//                    Toast.makeText(this, "$topic notification unsubscribed", Toast.LENGTH_SHORT).show()
-//                    Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
-//                    // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "N"
-//                }
-//                .addOnFailureListener {
-//                    Log.e(TAG, "toggleSubTopic: error", it)
-//                }
-//
-//        } else {
-//            FirebaseMessaging.getInstance().subscribeToTopic(topic)
-//                .addOnSuccessListener {
-//                    putAppPref(topic, "Y")
-//                    Toast.makeText(this, "$topic notification subscribed", Toast.LENGTH_SHORT).show()
-//                    Log.d(TAG, "toggleSubTopic: $topic = ${getAppPref(topic)}")
-//                    // TODO : CALL JAVASCRIPT subTopicStateChange(topic: String, state: String), topic = topic, state = "Y"
-//                }
-//                .addOnFailureListener {
-//                    Log.e(TAG, "toggleSubTopic: error", it)
-//                }
-//        }
-//    } // base
-
     fun branchCustomEvent(eventName: String, params: String?) {
         if (params == null || params == "" || params == "undefined" || params == "{}") {
             val branch = Branch.getInstance()
@@ -477,7 +290,7 @@ class WebViewActivity : BaseActivity() {
         }
 
         /* ONLY {} TYPE, NOT [] TYPE JSON_OBJECT */
-    }
+    } // tracker
 
     fun firebaseCustomEvent(eventName: String, params: String?) {
         try {
@@ -492,7 +305,7 @@ class WebViewActivity : BaseActivity() {
                 Log.d(TAG, "firebaseCustomEvent: p = $params")
             }
         } catch (e: Exception) {}
-    } // log
+    } // tracker
 
     private fun bundleParams(jsonObject: JSONObject): Bundle {
         val bundle = Bundle()
@@ -504,7 +317,7 @@ class WebViewActivity : BaseActivity() {
         }
         Log.d(TAG, "bundleParams: bundle = $bundle")
         return bundle
-    } // log
+    } // tracker
 
     fun facebookCustomEvent(eventName: String, params: String?) {
         val logger: AppEventsLogger = AppEventsLogger.newLogger(this)
@@ -517,7 +330,7 @@ class WebViewActivity : BaseActivity() {
             Log.d(TAG, "facebookCustomEvent: e = $eventName")
             Log.d(TAG, "facebookCustomEvent: p = $params")
         }
-    }
+    } // tracker
 
     fun branchEventPurchase(itemID: String, price: String) {
         Log.d(TAG, "branchEventPurchaseCoin: invoked")
@@ -537,32 +350,24 @@ class WebViewActivity : BaseActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "branchEventPurchaseCoin", e)
         }
-    } // log
+    } // tracker
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        callbackManager.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == GOOGLE_SIGN_IN && resultCode == RESULT_OK) {
+        if (requestCode == SocialLoginHandler.GOOGLE_SIGN_IN && resultCode == RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-                Log.d(TAG, "onActivityResult: credential = $credential")
-                Log.d(TAG, "onActivityResult: requestCode = $requestCode")
-                Log.d(TAG, "onActivityResult: resultCode = $resultCode ")
-                Log.d(TAG, "onActivityResult: $data")
-                Log.d(TAG, "onActivityResult: success")
-                signInWithCredential(credential)
+                Log.d(TAG, "SEQ 2. Credential Received From : Google")
+                loginHandler.firebaseSignInWithCredential(credential)
             } catch (e: Exception) {
                 Log.w(TAG, "onActivityResult: Google Sign In Failed", e)
             }
         } else {
-            Log.d(TAG, "onActivityResult: requestCode = $requestCode")
-            Log.d(TAG, "onActivityResult: resultCode = $resultCode ")
-            Log.d(TAG, "onActivityResult: $data")
-            Log.d(TAG, "onActivityResult: else")
+            facebookCallbackManager.onActivityResult(requestCode, resultCode, data)
         }
-    } // account
+    }
 
     override fun onBackPressed() {
         when {

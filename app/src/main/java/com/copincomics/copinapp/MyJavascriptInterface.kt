@@ -1,14 +1,13 @@
 package com.copincomics.copinapp
 
-import android.content.Context
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.widget.Toast
+import com.copincomics.copinapp.util.SocialLoginHandler
 
-open class MyJavascriptInterface (mContext: Context) {
+open class MyJavascriptInterface (private val activity: WebViewActivity) {
 
-    private val activity: WebViewActivity = mContext as WebViewActivity
-
+    private val loginHandler: SocialLoginHandler = SocialLoginHandler(activity)
 
     @JavascriptInterface
     fun showToast(msg: String) {
@@ -18,32 +17,32 @@ open class MyJavascriptInterface (mContext: Context) {
     @JavascriptInterface
     fun googleLogin() {
         Log.d(WebViewActivity.TAG, "googleLogin: invoked")
-        activity.googleSignIn()
+        loginHandler.googleSignIn()
     }
 
     @JavascriptInterface
     fun facebookLogin() {
         Log.d(WebViewActivity.TAG, "facebookLogin: invoked")
-        activity.facebookLoginInApp()
+        loginHandler.facebookSignIn()
     }
 
     @JavascriptInterface
     fun twitterLogin() {
         Log.d(WebViewActivity.TAG, "twitterLogin: invoked")
-        activity.signInWithProvider("twitter.com")
+        loginHandler.signInWithProvider("twitter.com")
     }
 
     @JavascriptInterface
     fun appleLogin() {
         Log.d(WebViewActivity.TAG, "appleLogin: invoked")
-        activity.signInWithProvider("apple.com")
+        loginHandler.signInWithProvider("apple.com")
     }
 
     @JavascriptInterface
     fun setLTokens(t: String, lt: String) {
         Log.d(WebViewActivity.TAG, "setLTokens: invoked!")
         App.preferences.refreshToken = lt
-        AppConfig.shared().accessToken = t
+        App.config.accessToken = t
         activity.setCookie()
     }
 
