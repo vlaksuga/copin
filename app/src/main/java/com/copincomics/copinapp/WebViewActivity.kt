@@ -273,7 +273,7 @@ class WebViewActivity : BaseActivity() {
                             App.config.accountPKey = ret.userinfo.accountpkey
 
                             // Set Identity For Branch
-                            setBranchIdentity()
+                            setBranchIdentity(ret)
                             dismissLoader()
                             webView.loadUrl("javascript:loginWithFirebase('$idToken', '${App.config.deviceID}', 'android')")
                         }

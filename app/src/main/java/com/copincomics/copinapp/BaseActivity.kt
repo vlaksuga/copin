@@ -1,12 +1,10 @@
 package com.copincomics.copinapp
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
+import android.net.*
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.util.Log
@@ -14,6 +12,8 @@ import android.webkit.WebView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.copincomics.copinapp.data.BodyRetLogin
+import com.copincomics.copinapp.data.Version
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.FirebaseAuth
@@ -50,10 +50,42 @@ open class BaseActivity : AppCompatActivity() {
         loadingDialog.dismiss()
     }
 
-    fun setBranchIdentity() {
-        if (AppConfig.shared().accountPKey != "") {
+    fun setBranchIdentity(user: BodyRetLogin) {
+        if (user.userinfo.accountpkey != "") {
+            Log.d(TAG, "setBranchIdentity: accountPKey = ${user.userinfo.accountpkey}")
             val branch = Branch.getInstance(applicationContext)
-            branch.setIdentity(AppConfig.shared().accountPKey)
+            branch.setIdentity(user.userinfo.accountpkey)
+        }
+    }
+
+    fun showCustomAlert(case: String) {
+        var message = ""
+        var buttonText = ""
+        var action: () -> Unit = {}
+        when (case) {
+            "net" -> {
+                message = "Network Error"
+                buttonText = "Confirm"
+                action = { finish() }
+            }
+            "update" -> {
+                message = "Confirm to upgrade version?"
+                buttonText = "Confirm"
+                action = { startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp"))
+                )
+                    finish() }
+            }
+        }
+
+        val builder = AlertDialog.Builder(this)
+        builder.apply {
+            setMessage(message)
+            setPositiveButton(buttonText) { _, _-> action() }
+            setCancelable(false)
+            show()
         }
     }
 
@@ -74,7 +106,5 @@ open class BaseActivity : AppCompatActivity() {
         cm.unregisterNetworkCallback(networkCallback)
         Log.d(TAG, "unRegisterNetworkCallback: unregistered")
     }
-
-
 
 }

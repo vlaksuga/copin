@@ -9,7 +9,6 @@ data class VersionBody(
     val ANDROIDMIN: String,
     val ANDROIDWARNING: String,
     val ANDROIDRECENT: String,
-    val ANDROIDWEB: String,
     val APIURL11: String,
     val ENTRYURL11: String,
     val DEFAULTAPIURL: String,

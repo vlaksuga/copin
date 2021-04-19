@@ -14,7 +14,7 @@ class AppSharedPreferences(context: Context) {
     var refreshToken: String
     get() = preferences.getString(REFRESH_TOKEN, "")!!
     set(value) {
-        preferences.edit().putString(REFRESH_TOKEN, value).apply()
+        preferences.edit().putString(REFRESH_TOKEN, value).commit()
     }
 }
 

@@ -4,69 +4,49 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.copincomics.copinapp.data.Version
-import com.copincomics.copinapp.data.RetLogin
+import com.copincomics.copinapp.data.*
 import com.google.firebase.messaging.FirebaseMessaging
 import io.branch.referral.Branch
 import io.branch.referral.validators.IntegrationValidator
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import retrofit2.http.Body
 
 class EntryActivity : BaseActivity() {
 
     companion object {
         const val TAG = "TAG : Entry"
-        const val DEFAULT_API_URL = "https://sapi.copincomics.com"
-        const val DEFAULT_ENTRY_URL = "https://copincomics.com"
     }
 
     private var link: String? = null
-    private var toon: String? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_entry)
 
-        /* CHECK NETWORK CONNECTION */
         if (!checkNetworkConnection(this)) {
             showCustomAlert("net")
             return
         }
-        checkVersion()
-    }
 
-    private fun showCustomAlert(case: String) {
-        var message = ""
-        var buttonText = ""
-        var action: () -> Unit = {}
-        when (case) {
-            "net" -> {
-                message = "Network Error"
-                buttonText = "Confirm"
-                action = { finish() }
+        getVersionFromApi { version ->
+            setVersionToApp(version)
+            getFCMToken { token ->
+                App.config.deviceID = token
+                autoLoginWithRefreshToken { user ->
+                    setUserConfig(user)
+                    setBranchIdentity(user)
+                    startMainActivity()
+                    user
+                }
+                token
             }
-            "update" -> {
-                message = "Confirm to upgrade version?"
-                buttonText = "Confirm"
-                action = { startActivity(Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://play.google.com/store/apps/details?id=com.copincomics.copinapp")))
-                    finish() }
-            }
-        }
-
-        val builder = AlertDialog.Builder(this)
-        builder.apply {
-            setMessage(message)
-            setPositiveButton(buttonText) { _, _-> action() }
-            setCancelable(false)
-            show()
+            version
         }
     }
 
@@ -76,14 +56,14 @@ class EntryActivity : BaseActivity() {
             Branch.enableLogging()
             IntegrationValidator.validate(this)
             Branch.sessionBuilder(this)
-                    .withCallback { referringParams, _ ->
-                        Log.d(
-                                TAG,
-                                "Branch Session Builder: $referringParams"
-                        )
-                    }
-                    .withData(this.intent.data)
-                    .init()
+                .withCallback { referringParams, _ ->
+                    Log.d(
+                        TAG,
+                        "Branch Session Builder: $referringParams"
+                    )
+                }
+                .withData(this.intent.data)
+                .init()
         } catch (e: Exception) {
             Log.w(TAG, "onStart: Branch Init Fail", e)
         }
@@ -100,12 +80,13 @@ class EntryActivity : BaseActivity() {
     }
 
     private fun checkNetworkConnection(activity: AppCompatActivity): Boolean {
+        Log.d(TAG, "SEQ 1. checkNetworkConnection...")
         val result: Boolean
         val connectivityManager =
-                activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkCapabilities = connectivityManager.activeNetwork ?: return false
         val activeNetwork =
-                connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+            connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
         result = when {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
@@ -113,169 +94,130 @@ class EntryActivity : BaseActivity() {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
             else -> false
         }
+        Log.d(TAG, "SEQ 1. OK")
         return result
-
     }
 
-    private fun checkVersion() {
+    private fun getVersionFromApi(callback: (result: VersionBody) -> VersionBody) {
         // TODO : TO MAP
-        Log.d(TAG, "checkVersion: start")
+        Log.d(TAG, "SEQ 2. getVersionFromApi...")
         Retrofit().buildApiService().getVersion().enqueue(object : Callback<Version> {
             override fun onResponse(
-                    call: Call<Version>,
-                    response: Response<Version>
+                call: Call<Version>,
+                response: Response<Version>
             ) {
-                // validate response
                 if (response.body() == null) {
-                    adaptHardCodedVersion()
-                    loginWithRefreshToken()
+                    callback.invoke(getHardCodedVersion())
                     return
                 }
-
-                val res = response.body()!!
-
-                // put data
-                val minVersion = res.body.ANDROIDMIN.toIntOrNull() ?: 1
-                val recentVersion = res.body.ANDROIDRECENT.toIntOrNull() ?: 99
-                val apiURL11: String = res.body.APIURL11.ifEmpty { DEFAULT_API_URL }
-                val defaultApiURL = res.body.DEFAULTAPIURL.ifEmpty { DEFAULT_API_URL }
-                val entryURL11: String = res.body.ENTRYURL11.ifEmpty { DEFAULT_ENTRY_URL }
-                val defaultEntryURL = res.body.DEFAULTENTRYURL.ifEmpty { DEFAULT_ENTRY_URL }
-
-                // validateMinimumVersion
-                // we only need minVersion because currentVersion is already hard-coded
-
-                if (App.currentVersion < minVersion) {
-                    showCustomAlert("update")
-                    loginWithRefreshToken()
-                    return
-                }
-
-                // validateRecentVersion
-                App.config.entryURL = if (App.currentVersion > recentVersion) entryURL11 else defaultEntryURL
-                App.config.apiURL = if (App.currentVersion > recentVersion) DEFAULT_API_URL  else defaultApiURL
-                Log.d(TAG, "checkVersion: end")
-                loginWithRefreshToken()
+                Log.d(TAG, "SEQ 2. OK")
+                callback.invoke(response.body()!!.body)
             }
 
             override fun onFailure(call: Call<Version>, t: Throwable) {
-                adaptHardCodedVersion()
-                loginWithRefreshToken()
+                callback.invoke(getHardCodedVersion())
             }
         })
     }
 
-    private fun adaptHardCodedVersion() {
-        App.config.entryURL = DEFAULT_ENTRY_URL
-        App.config.apiURL = DEFAULT_API_URL
-    }
+    private fun setVersionToApp(versionBody: VersionBody) {
+        Log.d(TAG, "SEQ 3. setVersionToApp...")
+        val minVersion = versionBody.ANDROIDMIN.toInt()
+        val recentVersion = versionBody.ANDROIDRECENT.toInt()
+        val apiURL11: String = versionBody.APIURL11
+        val entryURL11: String = versionBody.ENTRYURL11
+        val defaultApiURL = versionBody.DEFAULTAPIURL
+        val defaultEntryURL = versionBody.DEFAULTENTRYURL
 
-    private fun loginWithRefreshToken() {
-        Log.d(TAG, "loginWithRefreshToken: start ")
-        val refreshToken = App.preferences.refreshToken
-
-        // validate refreshToken
-        if (refreshToken == "") {
-            emptyAccountData()
-            updateDeviceId()
-            Log.d(TAG, "loginWithRefreshToken: end")
+        if (App.currentVersion < minVersion) {
+            showCustomAlert("update")
             return
         }
 
-        Retrofit().buildApiService().processLoginByToken(lt = refreshToken).enqueue(object : Callback<RetLogin> {
-            override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
-
-                if(response.body() == null) {
-                    emptyAccountData()
-                    updateDeviceId()
-                    return
-                }
-
-                val res = response.body()!!
-                val head = res.head
-                val body = res.body
-
-                if (head.status == "error") {
-                    emptyAccountData()
-                    updateDeviceId()
-                    return
-                }
-
-                App.preferences.refreshToken = body.t2
-                App.config.accessToken = body.token
-                App.config.accountPKey = body.userinfo.accountpkey
-                setBranchIdentity()
-                updateDeviceId()
-                Log.d(TAG, "loginWithRefreshToken: end ")
-            }
-
-            override fun onFailure(call: Call<RetLogin>, t: Throwable) {
-                emptyAccountData()
-                updateDeviceId()
-                Log.d(TAG, "loginWithRefreshToken: end ")
-            }
-        })
-
+        App.config.entryURL = if (App.currentVersion > recentVersion) entryURL11 else defaultEntryURL
+        App.config.apiURL = if (App.currentVersion > recentVersion) apiURL11  else defaultApiURL
+        Log.d(TAG, "SEQ 3. OK")
     }
 
-
-
-    private fun updateDeviceId() {
+    private fun getFCMToken(callback: (token: String) -> String) {
+        Log.d(TAG, "SEQ 4. getFCMToken...")
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            App.config.deviceID = ""
             if (task.isSuccessful) {
                 task.result?.let { token ->
-                    App.config.deviceID = token
+                    Log.d(TAG, "SEQ 4. OK")
+                    callback.invoke(token)
                 }
             }
-            startMainActivity()
+            if(task.isCanceled) {
+                callback.invoke(App.config.deviceID)
+            }
         }
     }
 
-//    private fun subscribeInit() {
-//        Log.d(TAG, "subscribeInit: start")
-//        val topicList = arrayListOf("Notice", "Event", "Series")
-//        if (getAppPref("subInit") != "Y") {
-//            Log.d(TAG, "subscribeInit: invoked")
-//            fm.subscribeToTopic(topicList[0]).addOnCompleteListener { task0 ->
-//                if(task0.isSuccessful) {
-//                    Log.d(TAG, "subscribeInit: ${topicList[0]} subscribed")
-//                    putAppPref(topicList[0], "Y")
-//                    Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[0])}")
-//                }
-//                fm.subscribeToTopic(topicList[1]).addOnCompleteListener { task1 ->
-//                    if(task1.isSuccessful) {
-//                        Log.d(TAG, "subscribeInit: ${topicList[1]} subscribed")
-//                        putAppPref(topicList[1], "Y")
-//                        Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[1])}")
-//                    }
-//                    fm.subscribeToTopic(topicList[2]).addOnCompleteListener { task2 ->
-//                        if(task2.isSuccessful) {
-//                            Log.d(TAG, "subscribeInit: ${topicList[2]} subscribed")
-//                            putAppPref(topicList[2], "Y")
-//                            Log.d(TAG, "subscribeInit: prefs = ${getAppPref(topicList[2])}")
-//                        }
-//                        putAppPref("subInit", "Y")
-//                        subTopic = true
-//                        Log.d(TAG, "subscribeInit: end")
-//                        startMainActivity()
-//                    }
-//                }
-//            }
-//        } else {
-//            subTopic = true
-//            Log.d(TAG, "subscribeInit: end")
-//            startMainActivity()
-//        }
-//    }
+    private fun autoLoginWithRefreshToken(callback: (result: BodyRetLogin) -> BodyRetLogin) {
+        Log.d(TAG, "SEQ 5. autoLoginWithRefreshToken...")
+        val refreshToken = App.preferences.refreshToken
 
-    private fun emptyAccountData() {
-        App.preferences.refreshToken = ""
-        App.config.accessToken = ""
-        App.config.accountPKey = ""
+        if (refreshToken == "") {
+            callback.invoke(getHardCodedUser())
+            return
+        }
+
+        Retrofit().buildApiService().processLoginByToken(lt = refreshToken).enqueue(object :
+            Callback<RetLogin> {
+            override fun onResponse(call: Call<RetLogin>, response: Response<RetLogin>) {
+                if (response.body() == null) {
+                    callback.invoke(getHardCodedUser())
+                    return
+                }
+                Log.d(TAG, "SEQ 5. OK")
+                callback.invoke(response.body()!!.body)
+            }
+
+            override fun onFailure(call: Call<RetLogin>, t: Throwable) {
+                callback.invoke(getHardCodedUser())
+            }
+        })
+    }
+
+    private fun setUserConfig(user: BodyRetLogin) {
+        Log.d(TAG, "SEQ 6. setUserConfig...")
+        App.preferences.refreshToken = user.t2
+        App.config.accessToken = user.token
+        App.config.accountPKey = user.userinfo.accountpkey
+        Log.d(TAG, "SEQ 6. OK")
+    }
+
+    fun getHardCodedVersion() : VersionBody {
+        return VersionBody(
+            "1",
+            "5",
+            "99",
+            "https://api.copincomics.com/",
+            "https://copincomics.com/",
+            "https://api.copincomics.com/",
+            "https://copincomics.com/"
+        )
+    }
+
+    fun getHardCodedUser() : BodyRetLogin {
+        return BodyRetLogin(
+            "",
+            UserInfoForm(
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ),
+            ""
+        )
     }
 
     private fun startMainActivity() {
+        Log.d(TAG, "SEQ Final. startMainActivity...")
         val mainActivityIntent = Intent(this, WebViewActivity::class.java)
         if (link != null) {
             intent.extras?.let { bundle ->
@@ -283,6 +225,7 @@ class EntryActivity : BaseActivity() {
             }
             mainActivityIntent.putExtra("link", link)
         }
+        Log.d(TAG, "SEQ Final. OK")
         startActivity(mainActivityIntent)
     }
 
