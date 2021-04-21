@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import com.android.billingclient.api.*
 import com.copincomics.copinapp.data.CoinItem
 import com.copincomics.copinapp.data.Confirm
+import com.copincomics.copinapp.data.GetMe
 import com.copincomics.copinapp.data.RetLogin
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
@@ -97,7 +98,7 @@ open class MainWebViewActivity : BaseActivity() {
         } // main
 
         // From toon:// URI SCHEME
-            entryIntent.getStringExtra("toon")?.let { toon ->
+        entryIntent.getStringExtra("toon")?.let { toon ->
             currentUrl = "$entryURL?c=toon&k=$toon"
             Log.d(TAG, "onCreate: currentUrl = $entryURL?c=toon&k=$toon")
         } // main
@@ -135,6 +136,17 @@ open class MainWebViewActivity : BaseActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                val c = getAppPref("deviceId")
+                val t = getAppPref("t")
+                val d = "android"
+                val v = curVersion
+                Log.d(TAG, "setAuth: t:'$t', c :'$c', d :'$d', v:'$v'")
+                try {
+                    webView.loadUrl("javascript:setAuth('$t','$c','$d','$v')")
+                } catch (e: Exception) {
+                    Log.e(TAG, "setAuth fail", e)
+                }
+
                 loadingDialog.dismiss()
             }
 
@@ -186,6 +198,16 @@ open class MainWebViewActivity : BaseActivity() {
 
     private fun payInit() {
         Log.d(TAG, "payInit: invoked")
+        if (getAppPref("accountPKey") == "") {
+            val builder = AlertDialog.Builder(this)
+            builder.apply {
+                setMessage("ErrorCode : AP001, Please Restart App Again")
+                setPositiveButton("Confirm") { _, _ ->
+                    finish()
+                }.show()
+            }
+            return
+        }
         try {
             billingAgent.buildBillingClient()
         } catch (e: Exception) {
@@ -225,7 +247,6 @@ open class MainWebViewActivity : BaseActivity() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.apply {
             setAcceptCookie(true)
-            setAcceptThirdPartyCookies(webView, true)
             setCookie("copincomics.com", "copinandroid=${getAppPref("t")}")
             setCookie("live.copincomics.com", "copinandroid=${getAppPref("t")}")
         }
@@ -366,7 +387,7 @@ open class MainWebViewActivity : BaseActivity() {
             }
 
             override fun onFailure(call: Call<Confirm>, t: Throwable) {
-            Log.e(TAG, "onFailure: Confirm from backend fail", t)
+                Log.e(TAG, "onFailure: Confirm from backend fail", t)
             }
         })
     } // pay
@@ -465,7 +486,8 @@ open class MainWebViewActivity : BaseActivity() {
                 Log.d(TAG, "firebaseCustomEvent: e = $eventName")
                 Log.d(TAG, "firebaseCustomEvent: p = $params")
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+        }
     } // log
 
     private fun bundleParams(jsonObject: JSONObject): Bundle {
@@ -497,10 +519,10 @@ open class MainWebViewActivity : BaseActivity() {
         Log.d(TAG, "branchEventPurchaseCoin: invoked")
         try {
 
-             var rr = BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
-                .setCurrency(CurrencyType.USD)
-                .setRevenue(price.toDouble())
-                .setDescription(itemID)
+            var rr = BranchEvent(BRANCH_STANDARD_EVENT.PURCHASE)
+                    .setCurrency(CurrencyType.USD)
+                    .setRevenue(price.toDouble())
+                    .setDescription(itemID)
 
             var pp = price.toDoubleOrNull()
             if (pp != null) {
@@ -626,12 +648,30 @@ open class MainWebViewActivity : BaseActivity() {
 
         @JavascriptInterface
         fun setLTokens(t: String, lt: String) {
-            Log.d(TAG, "setLTokens: invoked")
+            Log.d(TAG, "setLTokens: invoked, t:$t, lt:$lt")
             val pref = sharedPreferences.edit()
             pref.putString("lt", lt)
             pref.putString("t", t)
             pref.commit()
             setCookie()
+            repo.getAccountDao().getMe().enqueue(object : Callback<GetMe> {
+                override fun onResponse(call: Call<GetMe>, response: Response<GetMe>) {
+                    response.body()?.let { me ->
+                        try {
+                            val p = sharedPreferences.edit()
+                            p.putString("accountPKey", me.body.apkey)
+                            p.commit()
+                            Log.d(TAG, "GetMe Success : accountPKey = ${me.body.apkey} ")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "set accountPKey error", e)
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call<GetMe>, t: Throwable) {
+                    Log.w(TAG, "set accountPKey fail", t)
+                }
+            })
         }
 
         @JavascriptInterface
@@ -684,10 +724,30 @@ open class MainWebViewActivity : BaseActivity() {
 
         @JavascriptInterface
         fun selectProduct(id: String) {
-            Log.d(TAG, "selectProduct: id = $id")
-            billingAgent.dataSorted[id]?.let { billingAgent.launchBillingFlow(it) } ?: {
-                Toast.makeText(this@MainWebViewActivity, "Product Id invalid", Toast.LENGTH_SHORT).show()
-            } ()
+//            Log.d(TAG, "selectProduct: id = $id")
+//            billingAgent.dataSorted[id]?.let {
+//                billingAgent.launchBillingFlow(it)
+//            } ?: {
+            val params = SkuDetailsParams.newBuilder()
+            params.setSkusList(arrayListOf(id))
+                    .setType(BillingClient.SkuType.INAPP)
+
+            // 클라이언트 사용하기 체크
+            billingAgent.billingClient?.querySkuDetailsAsync(
+                    params.build()
+            ) { result, list ->
+                if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    Log.d(WebBillingAgent.TAG, "queryInventoryAsync: Response Code is OK")
+                    if (!list.isNullOrEmpty() && list[0] != null) {
+                        billingAgent.launchBillingFlow(list[0])
+                    } else {
+                        Toast.makeText(this@MainWebViewActivity, "List is empty or null", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@MainWebViewActivity, "Error Code: E550", Toast.LENGTH_SHORT).show()
+                    Log.d(WebBillingAgent.TAG, "queryInventoryAsync: Response Code is Not OK")
+                }
+            }
         }
 
         @JavascriptInterface

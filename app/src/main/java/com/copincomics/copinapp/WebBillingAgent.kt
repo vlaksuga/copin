@@ -67,7 +67,7 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
         }
     }
 
-    private fun queryInventoryAsync() {
+    fun queryInventoryAsync() {
         Log.d(TAG, "queryInventoryAsync: invoked")
         val params = SkuDetailsParams.newBuilder()
         params.setSkusList(productIdsList)

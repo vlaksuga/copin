@@ -227,6 +227,7 @@ class EntryActivity : BaseActivity() {
     private fun checkLogin() {
         Log.d(TAG, "checkLogin: start")
         val lt = getAppPref("lt")
+        Log.d(TAG, "checkLogin: lt = $lt")
         if (lt != "") {
             Log.d(TAG, "checkLogin: lt is not empty")
             repo.getAccountDao().processLoginByToken(lt = lt).enqueue(object : Callback<RetLogin> {
@@ -244,11 +245,12 @@ class EntryActivity : BaseActivity() {
                             Log.d(TAG, "onResponse: Auth Login Token = ${ret.t2}")
                             Log.d(TAG, "onResponse: Access Token = ${ret.token}")
                             Log.d(
-                                TAG,
-                                "onResponse: AccountPKey = ${ret.userinfo.accountpkey}"
+                                    TAG,
+                                    "onResponse: AccountPKey = ${ret.userinfo.accountpkey}"
                             )
                         } else {
                             emptyAccountPreference()
+                            Log.d(TAG, "onResponse: login fail status (${head.status})")
                             Log.d(TAG, "onResponse: login fail message (${head.msg})")
                         }
                         checkLogin = true
@@ -271,7 +273,6 @@ class EntryActivity : BaseActivity() {
             Log.d(TAG, "checkLogin: end")
             updateDeviceId()
         }
-        Log.d(TAG, "checkLogin: $checkLogin")
     }
 
     private fun updateDeviceId() {
