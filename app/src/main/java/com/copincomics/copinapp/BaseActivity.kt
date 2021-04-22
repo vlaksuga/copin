@@ -19,7 +19,7 @@ open class BaseActivity : AppCompatActivity() {
     companion object {
         const val TAG = "Base"
         const val PREFERENCE_NAME = "copincomics"
-        const val curVersion = 11
+        const val curVersion = 12
     }
 
     lateinit var sharedPreferences: SharedPreferences

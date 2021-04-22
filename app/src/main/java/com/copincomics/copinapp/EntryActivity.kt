@@ -132,21 +132,13 @@ class EntryActivity : BaseActivity() {
                 response: Response<CheckVersion>
             ) {
                 response.body()?.let { res ->
-                    var minVersion = res.body.ANDROIDMIN.toIntOrNull()
-                    var recentVersion = res.body.ANDROIDRECENT.toIntOrNull()
+                    val minVersion = res.body.getI("ANDROIDMIN", 1)
+                    val recentVersion = res.body.getI("ANDROIDRECENT", 99)
+                    val apiURL: String = res.body.getS("APIURL$curVersion", "https://api.copincomics.com")
+                    val entryURL: String = res.body.getS("ENTRYURL$curVersion", "https://copincomics.com")
+                    val defaultEntryURL = res.body.getS("DEFAULTENTRYURL", "https://copincomics.com")
+                    val defaultApiURL = res.body.getS("DEFAULTAPIURL", "https://api.copincomics.com")
 
-                    // if min or recent can't convert to int
-                    if (minVersion == null) {
-                        minVersion = 1
-                    }
-                    if (recentVersion == null) {
-                        recentVersion = 99
-                    }
-
-                    val apiURL11: String = res.body.APIURL11
-                    val entryURL11: String = res.body.ENTRYURL11
-                    val defaultEntryURL = res.body.DEFAULTENTRYURL
-                    val defaultApiURL = res.body.DEFAULTAPIURL
                     Log.d(TAG, "onResponse: curVersion : $curVersion")
                     Log.d(TAG, "onResponse: minVersion : $minVersion")
                     Log.d(TAG, "onResponse: recentVersion : $recentVersion")
@@ -166,18 +158,18 @@ class EntryActivity : BaseActivity() {
                     } else {
                         Log.d(TAG, "onResponse: No need to update app")
                         if (curVersion > recentVersion) {
-                            Log.d(TAG, "onResponse: apiURL11 : $apiURL11")
-                            Log.d(TAG, "onResponse: entryURL11 : $entryURL11")
+                            Log.d(TAG, "onResponse: apiURL : $apiURL")
+                            Log.d(TAG, "onResponse: entryURL : $entryURL")
                             val pref = sharedPreferences.edit()
                             pref.putString("e", defaultEntryURL)
                             pref.putString("a", defaultApiURL)
 
-                            if (entryURL11.isNotBlank() or entryURL11.isNotEmpty()) {
-                                pref.putString("e", entryURL11)
+                            if (entryURL.isNotBlank() or entryURL.isNotEmpty()) {
+                                pref.putString("e", entryURL)
                             }
 
-                            if (apiURL11.isNotBlank() or apiURL11.isNotEmpty()) {
-                                pref.putString("a", apiURL11)
+                            if (apiURL.isNotBlank() or apiURL.isNotEmpty()) {
+                                pref.putString("a", apiURL)
                             } else {
                                 Log.d(TAG, "onResponse: defaultEntry")
                             }
