@@ -1,6 +1,7 @@
 package com.copincomics.copinapp
 
 
+import android.app.AlertDialog
 import android.util.Log
 import android.widget.Toast
 import com.android.billingclient.api.*
@@ -19,6 +20,13 @@ open class WebBillingAgent(private val activity: MainWebViewActivity) : Purchase
 
     fun buildBillingClient() {
         Log.d(TAG, "buildBillingClient: start")
+        if(activity.getAppPref("accountPKey") == "") {
+            val builder = AlertDialog.Builder(activity)
+            builder.apply {
+                setMessage("Some problem occurred!")
+                setPositiveButton("Confirm") { _ , _ -> activity.finish()}
+            }
+        }
         if(billingClient == null) {
             billingClient = BillingClient.newBuilder(activity)
                     .enablePendingPurchases()
