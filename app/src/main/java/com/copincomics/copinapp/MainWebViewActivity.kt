@@ -140,14 +140,21 @@ open class MainWebViewActivity : BaseActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 val c = getAppPref("deviceId")
-                val t = getAppPref("t")
+                var t = getAppPref("t")
+                if ( t == "") {
+                    t = UUID.randomUUID().toString()
+                    try {
+                        val pref = sharedPreferences.edit()
+                        pref.putString("t", t)
+                        pref.commit()
+                    } catch (e: Exception) {}
+                }
                 val d = "android"
                 val v = curVersion
                 Log.d(TAG, "setAuth: t:'$t', c :'$c', d :'$d', v:'$v'")
                 try {
-                    if ( t != "") {
-                        webView.loadUrl("javascript:setAuth('$t','$c','$d','$v')")
-                    }
+                     webView.loadUrl("javascript:setAuth('$t','$c','$d','$v')")
+
                 } catch (e: Exception) {
                     Log.e(TAG, "setAuth fail", e)
                 }
@@ -609,7 +616,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     override fun onStop() {
         super.onStop()
-//        loadingDialog.dismiss()
+        loadingDialog.dismiss()
         unregisterNetworkCallback(networkCallback)
     } // base
 
@@ -655,15 +662,6 @@ open class MainWebViewActivity : BaseActivity() {
         fun setLTokens(t: String, lt: String) {
             Log.d(TAG, "setLTokens: invoked, t:$t, lt:$lt")
             val pref = sharedPreferences.edit()
-            if (lt == "") {
-                Log.d(TAG, "setLTokens: user logout")
-                val token = UUID.randomUUID().toString()
-                pref.putString("t", token)
-                pref.putString("accountPKey", "")
-                pref.commit()
-                setCookie()
-                return
-            }
             pref.putString("lt", lt)
             pref.putString("t", t)
             pref.commit()
@@ -738,10 +736,7 @@ open class MainWebViewActivity : BaseActivity() {
 
         @JavascriptInterface
         fun selectProduct(id: String) {
-//            Log.d(TAG, "selectProduct: id = $id")
-//            billingAgent.dataSorted[id]?.let {
-//                billingAgent.launchBillingFlow(it)
-//            } ?: {
+            Log.d(TAG, "selectProduct: id = $id")
             val params = SkuDetailsParams.newBuilder()
             params.setSkusList(arrayListOf(id))
                     .setType(BillingClient.SkuType.INAPP)

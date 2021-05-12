@@ -46,15 +46,6 @@ class EntryActivity : BaseActivity() {
         pref.commit()
 
 
-        // CHECK EMPTY TOKEN
-        if (getAppPref("t") == "") {
-            val token = UUID.randomUUID().toString()
-            val pref = sharedPreferences.edit()
-            pref.putString("t", token)
-            pref.commit()
-            Log.d(MainWebViewActivity.TAG, "create token: $token")
-        }
-
         /* INTENT EXTRA */
         val intent = intent
         if (intent.data != null && intent.data.toString().contains("toon://open/")) {
@@ -68,7 +59,7 @@ class EntryActivity : BaseActivity() {
             Log.d(TAG, "intent extra link = $link")
         }
 
-        Log.d(TAG, "onCreate: a = ${intent.action}, d = ${intent.data} ")
+        Log.d(TAG, "onCreate: a = ${intent.action}, d = ${intent.data}")
 
 
         /* CHECK NETWORK CONNECTION */

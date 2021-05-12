@@ -8,6 +8,7 @@ import okhttp3.*
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
@@ -43,7 +44,18 @@ class ServiceRepo(private val pref: SharedPreferences) : BaseActivity() {
         val httpClient = OkHttpClient.Builder()
             .callTimeout(1, TimeUnit.MINUTES)
             .connectTimeout(30, TimeUnit.SECONDS)
-        val t = pref.getString("t", "")!!
+        var t = pref.getString("t", "")!!
+
+        if (t == "") {
+            t = UUID.randomUUID().toString()
+            try {
+                val p = pref.edit()
+                p.putString("t", t)
+                p.commit()
+            } catch (e: Exception) {
+
+            }
+        }
         val c = pref.getString("deviceId", "")!!
         val d = "android"
         val v = curVersion.toString()
