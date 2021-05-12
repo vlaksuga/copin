@@ -38,6 +38,7 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.*
 
 open class MainWebViewActivity : BaseActivity() {
 
@@ -76,6 +77,7 @@ open class MainWebViewActivity : BaseActivity() {
         loadingDialog.show() // base
         auth = Firebase.auth // base
         callbackManager = CallbackManager.Factory.create() // account
+
 
         // Get Entry URL
         entryURL = getAppPref("e")
@@ -118,6 +120,7 @@ open class MainWebViewActivity : BaseActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+
                 if (currentUrl.contains("m=payment") && url?.contains("m_ps.html") == false) {
                     billingAgent.endBillingConnection()
                 }
@@ -142,7 +145,9 @@ open class MainWebViewActivity : BaseActivity() {
                 val v = curVersion
                 Log.d(TAG, "setAuth: t:'$t', c :'$c', d :'$d', v:'$v'")
                 try {
-                    webView.loadUrl("javascript:setAuth('$t','$c','$d','$v')")
+                    if ( t != "") {
+                        webView.loadUrl("javascript:setAuth('$t','$c','$d','$v')")
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "setAuth fail", e)
                 }
@@ -604,7 +609,7 @@ open class MainWebViewActivity : BaseActivity() {
 
     override fun onStop() {
         super.onStop()
-        loadingDialog.dismiss()
+//        loadingDialog.dismiss()
         unregisterNetworkCallback(networkCallback)
     } // base
 
@@ -650,6 +655,15 @@ open class MainWebViewActivity : BaseActivity() {
         fun setLTokens(t: String, lt: String) {
             Log.d(TAG, "setLTokens: invoked, t:$t, lt:$lt")
             val pref = sharedPreferences.edit()
+            if (lt == "") {
+                Log.d(TAG, "setLTokens: user logout")
+                val token = UUID.randomUUID().toString()
+                pref.putString("t", token)
+                pref.putString("accountPKey", "")
+                pref.commit()
+                setCookie()
+                return
+            }
             pref.putString("lt", lt)
             pref.putString("t", t)
             pref.commit()

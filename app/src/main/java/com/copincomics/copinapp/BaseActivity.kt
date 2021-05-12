@@ -19,7 +19,7 @@ open class BaseActivity : AppCompatActivity() {
     companion object {
         const val TAG = "Base"
         const val PREFERENCE_NAME = "copincomics"
-        const val curVersion = 12
+        const val curVersion = 100
     }
 
     lateinit var sharedPreferences: SharedPreferences
@@ -39,23 +39,9 @@ open class BaseActivity : AppCompatActivity() {
         loadingDialog = builder.create()
     }
 
-//    fun putAppPref(key: String, value: String) {
-//        with(sharedPreferences.edit()) {
-//            putString(key, value)
-//            commit()
-//        }
-//    }
 
     fun getAppPref(key: String): String {
         return sharedPreferences.getString(key, "")!!
-    }
-
-    fun showToast(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-    }
-
-    fun getCurVersion() : Int {
-        return curVersion
     }
 
     fun registerNetworkCallback(networkCallback: NetworkCallback) {

@@ -17,6 +17,7 @@ import io.branch.referral.validators.IntegrationValidator
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.util.*
 
 class EntryActivity : BaseActivity() {
 
@@ -44,6 +45,15 @@ class EntryActivity : BaseActivity() {
         pref.putString("a", "https://sapi.copincomics.com")
         pref.commit()
 
+
+        // CHECK EMPTY TOKEN
+        if (getAppPref("t") == "") {
+            val token = UUID.randomUUID().toString()
+            val pref = sharedPreferences.edit()
+            pref.putString("t", token)
+            pref.commit()
+            Log.d(MainWebViewActivity.TAG, "create token: $token")
+        }
 
         /* INTENT EXTRA */
         val intent = intent
@@ -189,7 +199,7 @@ class EntryActivity : BaseActivity() {
                     checkVersion = true
                     Log.d(TAG, "checkVersion: end")
                     checkLogin()
-                } ?: {
+                } ?: run {
                     Log.d(TAG, "onResponse: here??")
                     val pref = sharedPreferences.edit()
                     pref.putString("e", "https://copincomics.com")
@@ -198,7 +208,7 @@ class EntryActivity : BaseActivity() {
                     checkVersion = true
                     Log.d(TAG, "checkVersion: end")
                     checkLogin()
-                }()
+                }
             }
 
             override fun onFailure(call: Call<CheckVersion>, t: Throwable) {
@@ -343,7 +353,6 @@ class EntryActivity : BaseActivity() {
         Log.d(TAG, "emptyAccountPreference: empty")
         val pref = sharedPreferences.edit()
         pref.putString("lt", "")
-        pref.putString("t", "")
         pref.putString("accountPKey", "")
         pref.commit()
     }
