@@ -145,14 +145,20 @@ open class MainWebViewActivity : BaseActivity() {
                 error: WebResourceError?
             ) {
                 Log.d(TAG, "onReceivedError: ")
+                    // TODO : 우짤찌 정하기
                 if (error?.errorCode == ERROR_HOST_LOOKUP) {
-                    val builder = AlertDialog.Builder(this@MainWebViewActivity)
-                    builder.setMessage(error.description)
-                        .setPositiveButton("Ok")  { _, _ -> finish() }
-                        .show()
+                    // TODO : 싱글톤
+                    startActivity(Intent(this@MainWebViewActivity, FActivity::class.java))
+                    finish()
+//                    val builder = AlertDialog.Builder(this@MainWebViewActivity)
+//                    builder.setMessage("The network was unable to accept the request. Select [OK] button to close and restart the app.")
+//                        .setPositiveButton("Ok")  { _, _ ->  finish() }
+//                        .show()
+//                    finish()
+                  //  super.onReceivedError(view, request, error)
                     return
                 }
-                super.onReceivedError(view, request, error)
+              //  super.onReceivedError(view, request, error)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -220,6 +226,7 @@ open class MainWebViewActivity : BaseActivity() {
         Log.d(TAG, "onCreate: accountPKey = $accountPKey")
         webView.loadUrl(currentUrl) // Each*/
     }
+
 
     private fun payInit() {
         Log.d(TAG, "payInit: invoked")
@@ -352,6 +359,8 @@ open class MainWebViewActivity : BaseActivity() {
             Log.e(TAG, "loginAuthServerWithFirebaseUser: Fail", e)
         }
     } // account
+
+
 
     private fun restartToBaseUrl() {
         webView.loadUrl(entryURL)
