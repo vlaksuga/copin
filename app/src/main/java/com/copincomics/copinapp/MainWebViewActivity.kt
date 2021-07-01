@@ -1,5 +1,6 @@
 package com.copincomics.copinapp
 
+import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -38,6 +39,7 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.lang.Error
 import java.util.*
 
 open class MainWebViewActivity : BaseActivity() {
@@ -137,6 +139,22 @@ open class MainWebViewActivity : BaseActivity() {
                 Log.d(TAG, "urlHistory: currentUrl = $currentUrl")
             }
 
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                Log.d(TAG, "onReceivedError: ")
+                if (error?.errorCode == ERROR_HOST_LOOKUP) {
+                    val builder = AlertDialog.Builder(this@MainWebViewActivity)
+                    builder.setMessage(error.description)
+                        .setPositiveButton("Ok")  { _, _ -> finish() }
+                        .show()
+                    return
+                }
+                super.onReceivedError(view, request, error)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 val c = getAppPref("deviceId")
@@ -200,12 +218,7 @@ open class MainWebViewActivity : BaseActivity() {
         setCookie() // main
         accountPKey = getAppPref("accountPKey") // base
         Log.d(TAG, "onCreate: accountPKey = $accountPKey")
-    }
-
-    override fun onStart() {
-        super.onStart()
         webView.loadUrl(currentUrl) // Each*/
-
     }
 
     private fun payInit() {
@@ -609,15 +622,10 @@ open class MainWebViewActivity : BaseActivity() {
         }
     } // base
 
-    override fun onResume() {
-        super.onResume()
-        registerNetworkCallback(networkCallback)
-    }
 
     override fun onStop() {
         super.onStop()
         loadingDialog.dismiss()
-        unregisterNetworkCallback(networkCallback)
     } // base
 
     override fun onDestroy() {

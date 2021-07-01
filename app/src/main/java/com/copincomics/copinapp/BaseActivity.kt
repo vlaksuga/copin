@@ -49,8 +49,6 @@ open class BaseActivity : AppCompatActivity() {
         val networkRequest = NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
-                .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
                 .build()
         cm.registerNetworkCallback(networkRequest, networkCallback)
         Log.d(TAG, "registerNetworkCallback: registered")
