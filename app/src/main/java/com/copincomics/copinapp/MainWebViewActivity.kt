@@ -1,6 +1,6 @@
 package com.copincomics.copinapp
 
-import android.content.DialogInterface
+
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -10,7 +10,6 @@ import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.android.billingclient.api.*
-import com.copincomics.copinapp.data.CoinItem
 import com.copincomics.copinapp.data.Confirm
 import com.copincomics.copinapp.data.GetMe
 import com.copincomics.copinapp.data.RetLogin
@@ -25,7 +24,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.auth.*
 import com.google.firebase.auth.ktx.auth
@@ -39,7 +37,6 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.lang.Error
 import java.util.*
 
 open class MainWebViewActivity : BaseActivity() {
@@ -145,20 +142,16 @@ open class MainWebViewActivity : BaseActivity() {
                 error: WebResourceError?
             ) {
                 Log.d(TAG, "onReceivedError: ")
-                    // TODO : 우짤찌 정하기
+
                 if (error?.errorCode == ERROR_HOST_LOOKUP) {
-                    // TODO : 싱글톤
                     startActivity(Intent(this@MainWebViewActivity, FActivity::class.java))
                     finish()
 //                    val builder = AlertDialog.Builder(this@MainWebViewActivity)
 //                    builder.setMessage("The network was unable to accept the request. Select [OK] button to close and restart the app.")
 //                        .setPositiveButton("Ok")  { _, _ ->  finish() }
 //                        .show()
-//                    finish()
-                  //  super.onReceivedError(view, request, error)
                     return
                 }
-              //  super.onReceivedError(view, request, error)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -646,6 +639,12 @@ open class MainWebViewActivity : BaseActivity() {
     }
 
     open inner class WebViewJavascriptInterface {
+
+        @JavascriptInterface
+        fun ktk(msg: String) {
+            Log.d(TAG, "ktk: $msg")
+        }
+
         @JavascriptInterface
         fun showToast(msg: String) {
             Toast.makeText(this@MainWebViewActivity, msg, Toast.LENGTH_SHORT).show()

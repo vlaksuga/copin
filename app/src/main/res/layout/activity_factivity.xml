@@ -7,8 +7,33 @@
     tools:context=".FActivity">
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/textView_err_msg1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TextView" />
+        android:text="The network was unable to accept the request."
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/textView_err_msg2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select [OK] button to close and restart the app."
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView_err_msg1" />
+
+    <Button
+        android:id="@+id/button_finish"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:backgroundTint="@color/orange"
+        android:text="OK"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView_err_msg2" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
